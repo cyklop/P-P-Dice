@@ -330,8 +330,9 @@ export function createSocketHandler(
 
         const room = rm.getRoom(roomCode);
         if (room) {
-          socket.emit('room:state', room);
-          socket.to(roomCode).emit('player:joined', player);
+          // Send full room state to ALL clients so player list is correct
+          // (player ID changed from old socket to new socket)
+          io.to(roomCode).emit('room:state', room);
         }
         console.log(
           `Player ${player.name} reconnected to room ${roomCode}`,
@@ -449,15 +450,18 @@ export function createSocketHandler(
       );
       if (!success) return;
 
-      // Find the target's socket and disconnect it
+      // Notify all clients — send full room state since player was removed
+      const updatedRoom = rm.getRoom(mapping.roomCode);
+      if (updatedRoom) {
+        io.to(mapping.roomCode).emit('room:state', updatedRoom);
+      }
+
+      // If the target has an active socket, disconnect it
       const targetMapping = findSocketByPlayerId(targetPlayerId);
       if (targetMapping) {
         const { socketId } = targetMapping;
-        // Notify the kicked player's socket
-        io.to(mapping.roomCode).emit('player:left', targetPlayerId);
         socketMap.delete(socketId);
 
-        // Disconnect the kicked socket
         io.in(mapping.roomCode)
           .fetchSockets()
           .then((sockets) => {

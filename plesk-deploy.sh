@@ -17,6 +17,7 @@ DEPLOY_START=$(date +%s)
 # =============================================================================
 APP_DIR="${APP_DIR:-/var/www/vhosts/dice.stemago.de/httpdocs}"
 LOG_DIR="${APP_DIR}/logs"
+mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
 KEEP_LOGS="${KEEP_LOGS:-10}"
 KEEP_BACKUPS="${KEEP_BACKUPS:-3}"
@@ -164,8 +165,6 @@ fi
 echo "$$" > "$LOCK_FILE"
 cleanup_lock() { rm -f "$LOCK_FILE"; }
 trap 'cleanup_lock' EXIT
-
-mkdir -p "$LOG_DIR"
 
 # Alte Logs bereinigen
 LOG_FILES=($(ls -t "$LOG_DIR"/deploy-*.log 2>/dev/null || true))
