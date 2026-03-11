@@ -15,7 +15,7 @@ DEPLOY_START=$(date +%s)
 # =============================================================================
 # KONFIGURATION
 # =============================================================================
-APP_DIR="${APP_DIR:-/var/www/vhosts/stemago.de/dice.stemago.de/httpdocs}"
+APP_DIR="${APP_DIR:?APP_DIR must be set (e.g. /var/www/vhosts/example.com/httpdocs)}"
 LOG_DIR="${APP_DIR}/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
@@ -30,8 +30,8 @@ VHOST_BASE=$(echo "$APP_DIR" | grep -oP '/var/www/vhosts/[^/]+' 2>/dev/null || e
 
 if [ -n "$VHOST_BASE" ] && [ -d "$VHOST_BASE/.nodenv/shims" ]; then
     export PATH="$VHOST_BASE/.nodenv/shims:$PATH"
-elif [ -d "/var/www/vhosts/stemago.de/.nodenv/shims" ]; then
-    export PATH="/var/www/vhosts/stemago.de/.nodenv/shims:$PATH"
+elif SHARED_NODENV=$(find /var/www/vhosts -maxdepth 2 -path "*/.nodenv/shims" 2>/dev/null | head -1) && [ -n "$SHARED_NODENV" ]; then
+    export PATH="$SHARED_NODENV:$PATH"
 elif NODENV_PATH=$(find /var/www/vhosts -maxdepth 2 -type d -name ".nodenv" 2>/dev/null | head -1) && [ -n "$NODENV_PATH" ]; then
     export PATH="$NODENV_PATH/shims:$PATH"
 elif [ -d "/opt/plesk/node/20/bin" ]; then
