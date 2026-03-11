@@ -1,4 +1,4 @@
-import type { Room, Player, DiceSet, DiceResult, DiceType, PlayerRestingDice, PhysicsFrame } from '@/lib/types';
+import type { Room, Player, DiceSet, DiceResult, DiceType, PlayerRestingDice, PhysicsFrame, RollMode, SimultaneousSubMode } from '@/lib/types';
 import {
   MAX_PLAYERS,
   ROOM_CODE_LENGTH,
@@ -91,6 +91,12 @@ export class RoomManager {
       sets: [],
       isLocked: false,
       hostId: hostId,
+      rollMode: 'free',
+      simultaneousSubMode: 'same-set',
+      throwInProgress: null,
+      readyPlayers: [],
+      readyPlayerSets: {},
+      simultaneousSetId: null,
     };
 
     const reconnectToken = generateToken();
@@ -415,6 +421,70 @@ export class RoomManager {
       average: totalDice > 0 ? sum / totalDice : 0,
       frequencies,
     };
+  }
+
+  // ── Roll Mode ─────────────────────────────────────────────────────────
+
+  setRollMode(
+    code: string,
+    requesterId: string,
+    rollMode: RollMode,
+    simultaneousSubMode?: SimultaneousSubMode
+  ): boolean {
+    const state = this.states.get(code);
+    if (!state || state.room.hostId !== requesterId) return false;
+    state.room.rollMode = rollMode;
+    if (simultaneousSubMode !== undefined) {
+      state.room.simultaneousSubMode = simultaneousSubMode;
+    }
+    // Reset throw state on mode change
+    state.room.throwInProgress = null;
+    state.room.readyPlayers = [];
+    state.room.readyPlayerSets = {};
+    state.room.simultaneousSetId = null;
+    return true;
+  }
+
+  setThrowInProgress(code: string, playerId: string | null): boolean {
+    const state = this.states.get(code);
+    if (!state) return false;
+    state.room.throwInProgress = playerId;
+    return true;
+  }
+
+  setPlayerReady(code: string, playerId: string, setId: string): { allReady: boolean; readyPlayers: string[]; readyPlayerSets: Record<string, string> } | null {
+    const state = this.states.get(code);
+    if (!state) return null;
+    if (state.room.rollMode !== 'simultaneous') return null;
+
+    // In same-set mode: first player locks the set for everyone
+    if (state.room.simultaneousSubMode === 'same-set') {
+      if (state.room.simultaneousSetId === null) {
+        state.room.simultaneousSetId = setId;
+      }
+      // Enforce: player must use the locked set
+      setId = state.room.simultaneousSetId;
+    }
+
+    // Store per-player set choice
+    state.room.readyPlayerSets[playerId] = setId;
+
+    if (!state.room.readyPlayers.includes(playerId)) {
+      state.room.readyPlayers.push(playerId);
+    }
+
+    const connectedPlayers = state.room.players.filter(p => p.connected);
+    const allReady = connectedPlayers.every(p => state.room.readyPlayers.includes(p.id));
+
+    return { allReady, readyPlayers: [...state.room.readyPlayers], readyPlayerSets: { ...state.room.readyPlayerSets } };
+  }
+
+  clearReadyPlayers(code: string): void {
+    const state = this.states.get(code);
+    if (!state) return;
+    state.room.readyPlayers = [];
+    state.room.readyPlayerSets = {};
+    state.room.simultaneousSetId = null;
   }
 
   // ── Color management ────────────────────────────────────────────────────

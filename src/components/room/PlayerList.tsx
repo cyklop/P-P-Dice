@@ -1,11 +1,13 @@
 'use client';
 
-import type { Player, DiceResult } from '@/lib/types';
+import type { Player, DiceResult, RollMode } from '@/lib/types';
 
 export interface PlayerListProps {
   players: Player[];
   lastResults: Record<string, DiceResult>;
   currentPlayerId: string;
+  readyPlayers?: string[];
+  rollMode?: RollMode;
 }
 
 /** Format a single DiceResult into a short summary like "D20: 17" or "2D6: 11". */
@@ -31,6 +33,8 @@ export default function PlayerList({
   players,
   lastResults,
   currentPlayerId,
+  readyPlayers = [],
+  rollMode = 'free',
 }: PlayerListProps) {
   return (
     <div className="space-y-1">
@@ -42,6 +46,7 @@ export default function PlayerList({
         {players.map((player) => {
           const isMe = player.id === currentPlayerId;
           const lastResult = lastResults[player.id] ?? null;
+          const isReady = rollMode === 'simultaneous' && readyPlayers.includes(player.id);
 
           return (
             <li
@@ -49,7 +54,9 @@ export default function PlayerList({
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 transition-colors ${
                 isMe
                   ? 'bg-primary/10 ring-1 ring-primary/20'
-                  : 'bg-bg-light/50'
+                  : isReady
+                    ? 'bg-green-500/10 ring-1 ring-green-500/20'
+                    : 'bg-bg-light/50'
               }`}
             >
               {/* Color indicator */}
@@ -87,6 +94,11 @@ export default function PlayerList({
                 {isMe && (
                   <span className="shrink-0 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-light">
                     Du
+                  </span>
+                )}
+                {isReady && (
+                  <span className="shrink-0 rounded-full bg-green-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-400">
+                    Bereit
                   </span>
                 )}
               </span>

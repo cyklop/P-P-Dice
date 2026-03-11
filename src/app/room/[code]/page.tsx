@@ -33,8 +33,12 @@ export default function RoomPage({ params }: RoomPageProps) {
     roomState,
     playerId,
     createRoom,
+    fetchRoomInfo,
     joinRoom,
     throwDice,
+    readyDice,
+    forceThrow,
+    changeRollMode,
     updateSets,
     lockRoom,
     kickPlayer,
@@ -43,6 +47,9 @@ export default function RoomPage({ params }: RoomPageProps) {
     activeAnimation,
     playerDice,
     diceHistory,
+    throwLocked,
+    readyPlayers,
+    readyPlayerSets,
   } = useSocket();
 
   // Persist join state across re-renders caused by URL changes
@@ -52,6 +59,42 @@ export default function RoomPage({ params }: RoomPageProps) {
   const [roomCode, setRoomCode] = useState<string | null>(isCreating ? null : upperCode);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [hostPanelOpen, setHostPanelOpen] = useState(false);
+  const [roomInfo, setRoomInfo] = useState<{ takenColors: string[]; playerNames: string[] } | null>(null);
+
+  // Auto-reconnect: if roomState arrives via reconnect token, skip join dialog
+  useEffect(() => {
+    if (roomState && playerId && !hasJoined) {
+      // We reconnected successfully
+      hasJoinedRef.current = true;
+      setHasJoined(true);
+      if (roomState.code) {
+        roomCodeRef.current = roomState.code;
+        setRoomCode(roomState.code);
+        // Update URL if it was different (e.g. page was at /room/NEW)
+        if (roomState.code !== upperCode) {
+          window.history.replaceState(window.history.state, '', `/room/${roomState.code}`);
+        }
+      }
+    }
+  }, [roomState, playerId, hasJoined, upperCode]);
+
+  // Poll room info (taken colors, player names) while join dialog is open
+  useEffect(() => {
+    if (isCreating || !connected || hasJoined) return;
+
+    const poll = () => {
+      fetchRoomInfo(upperCode).then((info) => {
+        if (info) {
+          setRoomInfo({ takenColors: info.takenColors, playerNames: info.playerNames });
+        }
+      }).catch(() => { /* ignore */ });
+    };
+
+    // Fetch immediately + poll every 3 seconds
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [isCreating, connected, hasJoined, upperCode, fetchRoomInfo]);
 
   // Recover from state loss if refs indicate we already joined
   useEffect(() => {
@@ -113,16 +156,29 @@ export default function RoomPage({ params }: RoomPageProps) {
   // Determine current player info
   const currentPlayer = roomState?.players.find((p) => p.id === playerId);
   const isHost = currentPlayer?.isHost ?? false;
-  const takenColors = roomState?.players.map((p) => p.color) ?? [];
+  const takenColors = roomInfo?.takenColors ?? roomState?.players.map((p) => p.color) ?? [];
+  const existingNames = roomInfo?.playerNames ?? roomState?.players.map((p) => p.name) ?? [];
 
   // Build static dice from ALL players' last resting positions.
   // Skip the player whose dice are currently animating.
   const staticDice: DiceProps[] = useMemo(() => {
     const result: DiceProps[] = [];
 
+    // In simultaneous mode, dicePlayerMap contains ALL animating player IDs
+    const animatingPlayerIds = new Set<string>();
+    if (activeAnimation) {
+      if (activeAnimation.dicePlayerMap) {
+        for (const pid of Object.values(activeAnimation.dicePlayerMap)) {
+          animatingPlayerIds.add(pid);
+        }
+      } else {
+        animatingPlayerIds.add(activeAnimation.playerId);
+      }
+    }
+
     for (const [pid, state] of playerDice) {
-      // Skip player whose throw is currently animating
-      if (activeAnimation && activeAnimation.playerId === pid) continue;
+      // Skip players whose throw is currently animating
+      if (animatingPlayerIds.has(pid)) continue;
       if (!state.lastFrame) continue;
 
       // Find the player's color
@@ -167,6 +223,7 @@ export default function RoomPage({ params }: RoomPageProps) {
 
         <JoinDialog
           takenColors={takenColors}
+          existingNames={existingNames}
           onJoin={handleJoin}
           isOpen={connected}
         />
@@ -214,6 +271,16 @@ export default function RoomPage({ params }: RoomPageProps) {
               ? (roomState?.players.find((p) => p.id === activeAnimation.playerId)?.color ?? '#c2782e')
               : (currentPlayer?.color ?? '#c2782e')
           }
+          diceColorMap={
+            activeAnimation?.dicePlayerMap
+              ? Object.fromEntries(
+                  Object.entries(activeAnimation.dicePlayerMap).map(([diceId, pid]) => [
+                    diceId,
+                    roomState?.players.find((p) => p.id === pid)?.color ?? '#c2782e',
+                  ])
+                )
+              : undefined
+          }
           onAnimationComplete={finalizeAnimation}
         />
       </div>
@@ -226,7 +293,17 @@ export default function RoomPage({ params }: RoomPageProps) {
           lastResults={lastResults}
           sets={roomState.sets}
           onThrow={handleThrow}
+          onReady={readyDice}
+          onForceThrow={forceThrow}
           history={diceHistory}
+          rollMode={roomState.rollMode}
+          simultaneousSubMode={roomState.simultaneousSubMode}
+          isHost={isHost}
+          onRollModeChange={changeRollMode}
+          throwLocked={throwLocked}
+          readyPlayers={readyPlayers}
+          readyPlayerSets={readyPlayerSets}
+          simultaneousSetId={roomState.simultaneousSetId}
         />
       )}
 

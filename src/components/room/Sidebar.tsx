@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { Player, DiceResult, DiceSet } from '@/lib/types';
+import type { Player, DiceResult, DiceSet, RollMode, SimultaneousSubMode } from '@/lib/types';
 import PlayerList from '@/components/room/PlayerList';
 import DiceSetSelector from '@/components/room/DiceSetSelector';
 import HistoryLog from '@/components/room/HistoryLog';
@@ -13,7 +13,17 @@ export interface SidebarProps {
   lastResults: Record<string, DiceResult>;
   sets: DiceSet[];
   onThrow: (setId: string) => void;
+  onReady: (setId: string) => void;
+  onForceThrow: () => void;
   history: DiceResult[];
+  rollMode: RollMode;
+  simultaneousSubMode: SimultaneousSubMode;
+  isHost: boolean;
+  onRollModeChange: (mode: RollMode, subMode?: SimultaneousSubMode) => void;
+  throwLocked: string | null;
+  readyPlayers: string[];
+  readyPlayerSets: Record<string, string>;
+  simultaneousSetId: string | null;
 }
 
 type TabId = 'history' | 'stats';
@@ -54,19 +64,94 @@ export default function Sidebar({
   lastResults,
   sets,
   onThrow,
+  onReady,
+  onForceThrow,
   history,
+  rollMode,
+  simultaneousSubMode,
+  isHost,
+  onRollModeChange,
+  throwLocked,
+  readyPlayers,
+  readyPlayerSets,
+  simultaneousSetId,
 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('history');
 
+  const connectedCount = players.filter(p => p.connected).length;
+  const readyCount = readyPlayers.length;
+  const isPlayerReady = readyPlayers.includes(currentPlayerId);
+
   const sidebarContent = (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 pt-14">
+      {/* Roll Mode Toggle */}
+      <section>
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 rounded-lg bg-bg-light/40 p-0.5" role="radiogroup" aria-label="Wurf-Modus">
+            {(['free', 'sequential', 'simultaneous'] as RollMode[]).map((mode) => {
+              const labels: Record<RollMode, string> = {
+                free: 'Frei',
+                sequential: 'Einzeln',
+                simultaneous: 'Gemeinsam',
+              };
+              const isActive = rollMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  role="radio"
+                  aria-checked={isActive}
+                  disabled={!isHost}
+                  onClick={() => onRollModeChange(mode)}
+                  className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-semibold transition-colors ${
+                    isActive
+                      ? 'bg-primary/25 text-primary-light shadow-sm'
+                      : isHost
+                        ? 'text-text-muted hover:text-text hover:bg-bg-light/60'
+                        : 'text-text-muted/50 cursor-default'
+                  }`}
+                >
+                  {labels[mode]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {rollMode === 'simultaneous' && isHost && (
+          <div className="mt-1.5 flex rounded-md bg-bg-light/30 p-0.5">
+            {(['same-set', 'individual'] as SimultaneousSubMode[]).map((sub) => {
+              const labels: Record<SimultaneousSubMode, string> = { 'same-set': 'Gleiches Set', individual: 'Individuell' };
+              return (
+                <button
+                  key={sub}
+                  type="button"
+                  onClick={() => onRollModeChange('simultaneous', sub)}
+                  className={`flex-1 rounded px-2 py-1 text-[10px] font-medium transition-colors ${
+                    simultaneousSubMode === sub
+                      ? 'bg-primary/15 text-primary-light'
+                      : 'text-text-muted hover:text-text'
+                  }`}
+                >
+                  {labels[sub]}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Divider */}
+      <hr className="border-border-fantasy/30" />
+
       {/* Player List */}
       <section>
         <PlayerList
           players={players}
           lastResults={lastResults}
           currentPlayerId={currentPlayerId}
+          readyPlayers={readyPlayers}
+          rollMode={rollMode}
         />
       </section>
 
@@ -78,7 +163,27 @@ export default function Sidebar({
         <DiceSetSelector
           sets={sets}
           onThrow={onThrow}
+          onReady={onReady}
+          rollMode={rollMode}
+          simultaneousSubMode={simultaneousSubMode}
+          throwLocked={throwLocked}
+          currentPlayerId={currentPlayerId}
+          isPlayerReady={isPlayerReady}
+          readyCount={readyCount}
+          totalPlayers={connectedCount}
+          simultaneousSetId={simultaneousSetId}
+          readyPlayerSets={readyPlayerSets}
         />
+        {/* Host force-throw button */}
+        {rollMode === 'simultaneous' && isHost && readyCount > 0 && readyCount < connectedCount && (
+          <button
+            type="button"
+            onClick={onForceThrow}
+            className="mt-2 w-full rounded-lg border border-amber-600/40 bg-amber-900/30 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-900/50"
+          >
+            Trotzdem würfeln ({readyCount}/{connectedCount} bereit)
+          </button>
+        )}
       </section>
 
       {/* Divider */}

@@ -40,6 +40,8 @@ function saveColor(color: string) {
 export interface JoinDialogProps {
   /** Colors already taken by other players in the room. */
   takenColors: string[];
+  /** Names already used by players in the room. */
+  existingNames?: string[];
   /** Called when the user submits a valid name + color combination. */
   onJoin: (name: string, color: string) => void;
   /** Controls dialog visibility. */
@@ -48,6 +50,7 @@ export interface JoinDialogProps {
 
 export default function JoinDialog({
   takenColors,
+  existingNames = [],
   onJoin,
   isOpen,
 }: JoinDialogProps) {
@@ -85,6 +88,9 @@ export default function JoinDialog({
   }, [takenColors, selectedColor]);
 
   const trimmedName = name.trim();
+  const isNameTaken = trimmedName.length > 0 && existingNames.some(
+    (n) => n.toLowerCase() === trimmedName.toLowerCase()
+  );
   const isValid = trimmedName.length >= 1 && selectedColor !== null;
 
   const handleSubmit = useCallback(
@@ -147,7 +153,12 @@ export default function JoinDialog({
             Bitte gib einen Namen ein.
           </p>
         )}
-        {!(touched && trimmedName.length === 0) && (
+        {isNameTaken && (
+          <p className="mb-3 text-xs text-amber-400">
+            Dieser Name wird bereits im Raum verwendet.
+          </p>
+        )}
+        {!isNameTaken && !(touched && trimmedName.length === 0) && (
           <p className="mb-3 text-xs text-transparent">&#8203;</p>
         )}
 

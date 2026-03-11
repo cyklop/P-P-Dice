@@ -23,6 +23,8 @@ export interface DiceSceneProps {
   diceTypeMap?: Record<string, DiceType>;
   /** Default dice color when rendering physics-animated dice. */
   diceColor?: string;
+  /** Per-dice color overrides (diceId -> hex color). Used in simultaneous mode. */
+  diceColorMap?: Record<string, string>;
   /** Called when the client-side animation finishes playing. */
   onAnimationComplete?: () => void;
 }
@@ -36,6 +38,7 @@ export function DiceScene({
   physicsFrames,
   diceTypeMap = {},
   diceColor = '#c2782e',
+  diceColorMap = {},
   onAnimationComplete,
 }: DiceSceneProps) {
   // Sound effects
@@ -67,7 +70,7 @@ export function DiceScene({
         return entries.map(([id, type]) => ({
           id,
           type,
-          color: diceColor,
+          color: diceColorMap[id] ?? diceColor,
           // Initial positions — overridden by useFrame during playback
           position: [0, 3, 0] as [number, number, number],
           rotation: [0, 0, 0, 1] as [number, number, number, number],
@@ -75,7 +78,7 @@ export function DiceScene({
       }
     }
     return dice;
-  }, [isAnimating, dice, diceTypeMap, diceColor, playbackRef]);
+  }, [isAnimating, dice, diceTypeMap, diceColor, diceColorMap, playbackRef]);
 
   return (
     <div className="relative h-full w-full">

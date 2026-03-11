@@ -10,8 +10,10 @@ import type {
   PhysicsFrame,
   Player,
   PlayerRestingDice,
+  RollMode,
   Room,
   ServerToClientEvents,
+  SimultaneousSubMode,
 } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -38,8 +40,12 @@ export interface UseSocketReturn {
   /** ID of the current player (assigned after joining). */
   playerId: string | null;
   createRoom: (name: string, color: string) => Promise<string>;
+  fetchRoomInfo: (code: string) => Promise<{ exists: boolean; takenColors: string[]; playerNames: string[] } | null>;
   joinRoom: (code: string, name: string, color: string) => Promise<boolean>;
   throwDice: (setId: string) => void;
+  readyDice: (setId: string) => void;
+  forceThrow: () => void;
+  changeRollMode: (rollMode: RollMode, simultaneousSubMode?: SimultaneousSubMode) => void;
   updateSets: (sets: DiceSet[]) => void;
   lockRoom: () => void;
   kickPlayer: (playerId: string) => void;
@@ -51,11 +57,19 @@ export interface UseSocketReturn {
     playerId: string;
     frames: PhysicsFrame[][];
     diceTypeMap: Record<string, DiceType>;
+    /** Maps diceId -> playerId (for simultaneous mode coloring). */
+    dicePlayerMap?: Record<string, string>;
   } | null;
   /** Per-player resting dice (final positions from their last throw). */
   playerDice: Map<string, PlayerDiceState>;
   lastResult: DiceResult | null;
   diceHistory: DiceResult[];
+  /** Player ID currently throwing (sequential mode lock). */
+  throwLocked: string | null;
+  /** Player IDs who are ready (simultaneous mode). */
+  readyPlayers: string[];
+  /** Per-player set choices (simultaneous mode). */
+  readyPlayerSets: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,27 +78,27 @@ export interface UseSocketReturn {
 
 const RECONNECT_KEY = 'pp_dice_reconnect';
 
-function storeReconnectToken(code: string, playerId: string) {
+function storeReconnectData(code: string, reconnectToken: string) {
   try {
-    sessionStorage.setItem(RECONNECT_KEY, JSON.stringify({ code, playerId }));
+    sessionStorage.setItem(RECONNECT_KEY, JSON.stringify({ code, reconnectToken }));
   } catch {
     // storage unavailable
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getReconnectToken(): { code: string; playerId: string } | null {
+function getReconnectData(): { code: string; reconnectToken: string } | null {
   try {
     const raw = sessionStorage.getItem(RECONNECT_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed.reconnectToken) return parsed;
+    return null;
   } catch {
     return null;
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function clearReconnectToken() {
+function clearReconnectData() {
   try {
     sessionStorage.removeItem(RECONNECT_KEY);
   } catch {
@@ -105,21 +119,28 @@ export function useSocket(): UseSocketReturn {
     playerId: string;
     frames: PhysicsFrame[][];
     diceTypeMap: Record<string, DiceType>;
+    dicePlayerMap?: Record<string, string>;
   } | null>(null);
   const [playerDice, setPlayerDice] = useState<Map<string, PlayerDiceState>>(new Map());
   const [lastResult, setLastResult] = useState<DiceResult | null>(null);
   const [diceHistory, setDiceHistory] = useState<DiceResult[]>([]);
+  const [throwLocked, setThrowLocked] = useState<string | null>(null);
+  const [readyPlayers, setReadyPlayers] = useState<string[]>([]);
+  const [readyPlayerSets, setReadyPlayerSets] = useState<Record<string, string>>({});
 
   // -----------------------------------------------------------------------
   // Connect on mount
   // -----------------------------------------------------------------------
   useEffect(() => {
+    const savedData = getReconnectData();
+
     const socket: TypedSocket = io({
       // Same origin -- the Next.js custom server also serves Socket.io
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      auth: savedData ? { reconnectToken: savedData.reconnectToken } : undefined,
     });
 
     socketRef.current = socket;
@@ -135,6 +156,10 @@ export function useSocket(): UseSocketReturn {
     // -- Room state (full sync) -----------------------------------------
     socket.on('room:state', (room: Room) => {
       setRoomState(room);
+      // If we receive room:state and playerId isn't set yet, this is a reconnect
+      if (socket.id) {
+        setPlayerId(socket.id);
+      }
     });
 
     // -- Player events --------------------------------------------------
@@ -220,10 +245,13 @@ export function useSocket(): UseSocketReturn {
         return next;
       });
 
-      // Clear animation for this player
-      setActiveAnimation((prev) =>
-        prev?.playerId === result.playerId ? null : prev,
-      );
+      // Clear animation for this player (but not group animations —
+      // those are cleared by finalizeAnimation when playback completes)
+      setActiveAnimation((prev) => {
+        if (!prev) return null;
+        if (prev.dicePlayerMap) return prev; // group animation — don't clear here
+        return prev.playerId === result.playerId ? null : prev;
+      });
     });
 
     // -- Sets changed ---------------------------------------------------
@@ -267,6 +295,77 @@ export function useSocket(): UseSocketReturn {
       }
     });
 
+    // -- Roll mode events ------------------------------------------------
+    socket.on('roll-mode:changed', (data) => {
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        return { ...prev, rollMode: data.rollMode, simultaneousSubMode: data.simultaneousSubMode };
+      });
+      setThrowLocked(null);
+      setReadyPlayers([]);
+      setReadyPlayerSets({});
+    });
+
+    socket.on('throw:locked', (lockedPlayerId: string | null) => {
+      setThrowLocked(lockedPlayerId);
+    });
+
+    socket.on('ready:update', (data) => {
+      setReadyPlayers(data.readyPlayers);
+      setReadyPlayerSets(data.readyPlayerSets ?? {});
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          readyPlayers: data.readyPlayers,
+          readyPlayerSets: data.readyPlayerSets ?? {},
+          simultaneousSetId: data.simultaneousSetId,
+        };
+      });
+    });
+
+    // -- Group physics (simultaneous mode) --------------------------------
+    socket.on('dice:group-physics', (data) => {
+      // Build combined type map and player map from all players
+      const typeMap: Record<string, DiceType> = {};
+      const playerMap: Record<string, string> = {};
+      for (const p of data.players) {
+        for (const dt of p.diceTypes) {
+          typeMap[dt.id] = dt.type;
+          playerMap[dt.id] = p.playerId;
+        }
+      }
+
+      // For each player, store their dice type maps for later result matching
+      setPlayerDice((prev) => {
+        const next = new Map(prev);
+        for (const p of data.players) {
+          const playerTypeMap: Record<string, DiceType> = {};
+          for (const dt of p.diceTypes) {
+            playerTypeMap[dt.id] = dt.type;
+          }
+          const existing = next.get(p.playerId);
+          next.set(p.playerId, {
+            diceTypeMap: playerTypeMap,
+            lastFrame: existing?.lastFrame ?? null,
+            animFrames: data.allFrames,
+            resultValues: {},
+          });
+        }
+        return next;
+      });
+
+      // Use the first player's ID as the "active animation" but include all dice
+      if (data.players.length > 0) {
+        setActiveAnimation({
+          playerId: data.players[0].playerId,
+          frames: data.allFrames,
+          diceTypeMap: typeMap,
+          dicePlayerMap: playerMap,
+        });
+      }
+    });
+
     // -- Host changed ---------------------------------------------------
     socket.on('host:changed', (newHostId: string) => {
       setRoomState((prev) => {
@@ -299,13 +398,26 @@ export function useSocket(): UseSocketReturn {
         reject(new Error('Not connected'));
         return;
       }
-      socket.emit('room:create', { name, color }, (code: string) => {
+      socket.emit('room:create', { name, color }, (data) => {
         // The creator is automatically a player in the room
         if (socket.id) {
           setPlayerId(socket.id);
-          storeReconnectToken(code, socket.id);
+          storeReconnectData(data.code, data.reconnectToken);
         }
-        resolve(code);
+        resolve(data.code);
+      });
+    });
+  }, []);
+
+  const fetchRoomInfo = useCallback((code: string): Promise<{ exists: boolean; takenColors: string[]; playerNames: string[] } | null> => {
+    return new Promise((resolve, reject) => {
+      const socket = socketRef.current;
+      if (!socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+      socket.emit('room:info', { code }, (info) => {
+        resolve(info);
       });
     });
   }, []);
@@ -318,13 +430,12 @@ export function useSocket(): UseSocketReturn {
           reject(new Error('Not connected'));
           return;
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        socket.emit('room:join', { code, name, color }, (success: boolean, error?: string) => {
-          if (success && socket.id) {
+        socket.emit('room:join', { code, name, color }, (data) => {
+          if (data.success && socket.id && data.reconnectToken) {
             setPlayerId(socket.id);
-            storeReconnectToken(code, socket.id);
+            storeReconnectData(code, data.reconnectToken);
           }
-          resolve(success);
+          resolve(data.success);
         });
       });
     },
@@ -335,6 +446,24 @@ export function useSocket(): UseSocketReturn {
     const socket = socketRef.current;
     if (!socket) return;
     socket.emit('dice:throw', { setId });
+  }, []);
+
+  const readyDice = useCallback((setId: string) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('dice:ready', { setId });
+  }, []);
+
+  const forceThrow = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('dice:force-throw');
+  }, []);
+
+  const changeRollMode = useCallback((rollMode: RollMode, simultaneousSubMode?: SimultaneousSubMode) => {
+    const socket = socketRef.current;
+    if (!socket) return;
+    socket.emit('roll-mode:change', { rollMode, simultaneousSubMode });
   }, []);
 
   const updateSets = useCallback((sets: DiceSet[]) => {
@@ -369,10 +498,31 @@ export function useSocket(): UseSocketReturn {
         const lastFrame = prev.frames[prev.frames.length - 1];
         setPlayerDice((pd) => {
           const next = new Map(pd);
-          const existing = next.get(prev.playerId);
-          if (existing) {
-            next.set(prev.playerId, { ...existing, lastFrame, animFrames: null });
+
+          if (prev.dicePlayerMap) {
+            // Group animation: finalize ALL participating players
+            const playerIds = new Set(Object.values(prev.dicePlayerMap));
+            for (const pid of playerIds) {
+              const existing = next.get(pid);
+              if (existing) {
+                // Filter lastFrame to only this player's dice
+                const playerDiceIds = new Set(
+                  Object.entries(prev.dicePlayerMap)
+                    .filter(([, p]) => p === pid)
+                    .map(([diceId]) => diceId)
+                );
+                const playerLastFrame = lastFrame.filter(f => playerDiceIds.has(f.diceId));
+                next.set(pid, { ...existing, lastFrame: playerLastFrame, animFrames: null });
+              }
+            }
+          } else {
+            // Single player animation
+            const existing = next.get(prev.playerId);
+            if (existing) {
+              next.set(prev.playerId, { ...existing, lastFrame, animFrames: null });
+            }
           }
+
           return next;
         });
       }
@@ -386,8 +536,12 @@ export function useSocket(): UseSocketReturn {
     roomState,
     playerId,
     createRoom,
+    fetchRoomInfo,
     joinRoom,
     throwDice,
+    readyDice,
+    forceThrow,
+    changeRollMode,
     updateSets,
     lockRoom,
     kickPlayer,
@@ -397,5 +551,8 @@ export function useSocket(): UseSocketReturn {
     playerDice,
     lastResult,
     diceHistory,
+    throwLocked,
+    readyPlayers,
+    readyPlayerSets,
   };
 }
