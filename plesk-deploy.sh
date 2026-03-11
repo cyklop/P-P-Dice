@@ -15,7 +15,7 @@ DEPLOY_START=$(date +%s)
 # =============================================================================
 # KONFIGURATION
 # =============================================================================
-APP_DIR="${APP_DIR:-/var/www/vhosts/dice.stemago.de/httpdocs}"
+APP_DIR="${APP_DIR:-/var/www/vhosts/stemago.de/dice.stemago.de/httpdocs}"
 LOG_DIR="${APP_DIR}/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/deploy-$(date +%Y%m%d-%H%M%S).log"
