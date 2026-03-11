@@ -53,7 +53,7 @@ function executeSingleThrow(
   const room = rm.getRoom(roomCode);
   const isSequential = room?.rollMode === 'sequential';
 
-  let existingDice: ExistingDie[] = [];
+  const existingDice: ExistingDie[] = [];
   if (isSequential) {
     // Remove other players' resting dice and notify clients
     rm.clearRestingDice(roomCode);
