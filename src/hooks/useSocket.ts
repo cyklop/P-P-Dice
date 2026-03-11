@@ -136,10 +136,12 @@ export function useSocket(): UseSocketReturn {
 
     const socket: TypedSocket = io({
       // Same origin -- the Next.js custom server also serves Socket.io
-      transports: ['websocket', 'polling'],
+      // Polling first: works through Nginx/Passenger, then upgrades to WebSocket
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
+      timeout: 60000,
       auth: savedData ? { reconnectToken: savedData.reconnectToken } : undefined,
     });
 
