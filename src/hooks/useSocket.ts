@@ -158,7 +158,6 @@ export function useSocket(): UseSocketReturn {
     // -- Room state (full sync) -----------------------------------------
     socket.on('room:state', (room: Room) => {
       setRoomState(room);
-      // If we receive room:state and playerId isn't set yet, this is a reconnect
       if (socket.id) {
         setPlayerId(socket.id);
       }

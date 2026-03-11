@@ -333,6 +333,21 @@ export function createSocketHandler(
           // Send full room state to ALL clients so player list is correct
           // (player ID changed from old socket to new socket)
           io.to(roomCode).emit('room:state', room);
+
+          // Re-send resting dice to OTHER clients (IDs updated on server)
+          const restingDice = rm.getRestingDice(roomCode);
+          socket.to(roomCode).emit('dice:existing', restingDice);
+
+          // Re-send full state to reconnecting client:
+          // 1) Clear stale history + playerDice
+          // 2) Restore resting dice (with updated player IDs)
+          // 3) Replay history entries
+          socket.emit('dice:existing', []);
+          socket.emit('dice:existing', restingDice);
+          const history = rm.getDiceHistory(roomCode);
+          for (const entry of history) {
+            socket.emit('dice:result', entry);
+          }
         }
         console.log(
           `Player ${player.name} reconnected to room ${roomCode}`,
