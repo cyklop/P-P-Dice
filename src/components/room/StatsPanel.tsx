@@ -63,7 +63,7 @@ function DistributionChart({
   const labelInterval = barCount <= 8 ? 1 : barCount <= 12 ? 2 : barCount <= 20 ? 5 : 10;
 
   // Chart height scales with number of values
-  const chartHeight = Math.min(80, Math.max(40, barCount * 3));
+  const barAreaHeight = Math.min(80, Math.max(40, barCount * 3));
 
   return (
     <div>
@@ -74,8 +74,8 @@ function DistributionChart({
         <span className="text-[10px] text-text-muted">{values.length} Würfe</span>
       </div>
       <div
-        className="flex items-end gap-[1px]"
-        style={{ height: `${chartHeight}px` }}
+        className="flex items-end gap-[2px]"
+        style={{ height: `${barAreaHeight + 14}px` }}
         aria-label={`${type} Verteilung`}
       >
         {possibleValues.map((val, i) => {
@@ -85,16 +85,29 @@ function DistributionChart({
           const showLabel = (i + 1) % labelInterval === 0 || i === 0;
 
           return (
-            <div key={val} className="flex flex-1 flex-col items-center">
+            <div key={val} className="group relative flex flex-1 flex-col items-center justify-end" style={{ height: `${barAreaHeight + 14}px` }}>
+              {/* Tooltip on hover */}
+              {count > 0 && (
+                <div className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-bg-card px-1.5 py-0.5 text-[9px] font-semibold text-text shadow-md border border-border-fantasy/40 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  {label}: {count}x ({((count / values.length) * 100).toFixed(0)}%)
+                </div>
+              )}
+              {/* Count above bar */}
+              {count > 0 && (
+                <span className="mb-0.5 text-[8px] font-medium leading-none text-primary-light opacity-0 group-hover:opacity-100 transition-opacity">
+                  {count}
+                </span>
+              )}
+              {/* Bar */}
               <div
-                className="w-full rounded-t-sm bg-primary/70 transition-all hover:bg-primary"
+                className={`w-full rounded-t-sm transition-all ${count > 0 ? 'bg-primary/60 group-hover:bg-primary' : 'bg-primary/15'}`}
                 style={{
-                  height: `${Math.max(1, pct * (chartHeight - 12))}px`,
+                  height: count > 0 ? `${Math.max(3, pct * (barAreaHeight - 14))}px` : '2px',
                 }}
-                title={`${label}: ${count}x`}
               />
+              {/* X-axis label */}
               {showLabel && (
-                <span className="mt-0.5 text-[7px] leading-none text-text-muted">
+                <span className="mt-0.5 text-[8px] leading-none text-text-muted">
                   {label}
                 </span>
               )}

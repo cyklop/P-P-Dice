@@ -59,6 +59,7 @@ export default function RoomPage({ params }: RoomPageProps) {
   const [roomCode, setRoomCode] = useState<string | null>(isCreating ? null : upperCode);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [hostPanelOpen, setHostPanelOpen] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [roomInfo, setRoomInfo] = useState<{ takenColors: string[]; playerNames: string[] } | null>(null);
 
   // Auto-reconnect: if roomState arrives via reconnect token, skip join dialog
@@ -249,18 +250,35 @@ export default function RoomPage({ params }: RoomPageProps) {
     <main className="flex h-screen w-screen overflow-hidden bg-bg">
       {/* 3D Scene area */}
       <div className="relative flex-1">
-        {/* Room code badge */}
-        <div className="absolute left-4 top-4 z-20 rounded-lg border border-border-fantasy/40 bg-bg-card/80 px-3 py-1.5 backdrop-blur-sm">
+        {/* Room code badge (click to copy link) */}
+        <button
+          type="button"
+          onClick={() => {
+            const url = `${window.location.origin}/room/${roomCode ?? upperCode}`;
+            navigator.clipboard.writeText(url).then(() => {
+              setCodeCopied(true);
+              setTimeout(() => setCodeCopied(false), 2000);
+            });
+          }}
+          className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-lg border border-border-fantasy/40 bg-bg-card/80 px-3 py-1.5 backdrop-blur-sm transition-colors hover:bg-bg-card cursor-pointer"
+          title="Raum-Link kopieren"
+        >
           <span className="font-mono text-sm font-bold tracking-widest text-primary-light">
-            {roomCode ?? upperCode}
+            {codeCopied ? 'Kopiert!' : (roomCode ?? upperCode)}
           </span>
+          {!codeCopied && (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-text-muted">
+              <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+              <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+            </svg>
+          )}
           <span
-            className={`ml-2 inline-block h-2 w-2 rounded-full ${
+            className={`inline-block h-2 w-2 rounded-full ${
               connected ? 'bg-green-500' : 'bg-red-500'
             }`}
             title={connected ? 'Verbunden' : 'Getrennt'}
           />
-        </div>
+        </button>
 
         <DiceScene
           dice={staticDice}
