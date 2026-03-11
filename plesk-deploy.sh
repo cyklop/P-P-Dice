@@ -214,48 +214,11 @@ log "Building server (TypeScript)..."
 npm run build:server 2>&1 | tee -a "$LOG_FILE"
 
 # =============================================================================
-# BUILD NEXT.JS (Zero-Downtime)
+# BUILD NEXT.JS
 # =============================================================================
-log "Building Next.js (staging)..."
-
-rm -rf .next-staging 2>/dev/null || true
-
-# Build-Cache übernehmen
-if [ -d ".next/cache" ]; then
-    mkdir -p .next-staging
-    cp -r .next/cache .next-staging/cache
-    log "Build-Cache übernommen"
-fi
-
-# Protect tsconfig.json from Next.js modification
-cp tsconfig.json tsconfig.json.bak
-
-NEXT_BUILD_DIR=".next-staging" npm run build:next 2>&1 | tee -a "$LOG_FILE"
-
-# Restore tsconfig.json
-mv tsconfig.json.bak tsconfig.json
-
+log "Building Next.js..."
+npm run build:next 2>&1 | tee -a "$LOG_FILE"
 log "Build completed"
-
-# =============================================================================
-# ATOMISCHER SWAP
-# =============================================================================
-log "Swapping build directories..."
-
-if [ ! -d ".next-staging" ]; then
-    error ".next-staging directory not found after build!"
-    ls -la | tee -a "$LOG_FILE"
-    exit 1
-fi
-
-if [ -d ".next" ]; then
-    rm -rf .next-old 2>/dev/null || true
-    mv .next .next-old
-fi
-mv .next-staging .next
-rm -rf .next-old 2>/dev/null || true
-
-log "Build swap completed"
 
 # =============================================================================
 # APP NEUSTARTEN
