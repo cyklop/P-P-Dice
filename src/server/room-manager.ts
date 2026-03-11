@@ -268,6 +268,34 @@ export class RoomManager {
     // Update reconnect token mapping
     state.reconnectTokens.set(token, newSocketId);
 
+    // Update history entries to use the new player ID
+    for (const entry of state.history) {
+      if (entry.playerId === oldId) {
+        entry.playerId = newSocketId;
+      }
+    }
+
+    // Update resting dice mapping
+    const restingData = state.restingDice.get(oldId);
+    if (restingData) {
+      state.restingDice.delete(oldId);
+      restingData.playerId = newSocketId;
+      state.restingDice.set(newSocketId, restingData);
+    }
+
+    // Update ready players list
+    const readyIdx = state.room.readyPlayers.indexOf(oldId);
+    if (readyIdx !== -1) {
+      state.room.readyPlayers[readyIdx] = newSocketId;
+    }
+    if (state.room.readyPlayerSets[oldId] !== undefined) {
+      state.room.readyPlayerSets[newSocketId] = state.room.readyPlayerSets[oldId];
+      delete state.room.readyPlayerSets[oldId];
+    }
+    if (state.room.throwInProgress === oldId) {
+      state.room.throwInProgress = newSocketId;
+    }
+
     // Cancel room cleanup timer if one was running
     if (state.cleanupTimer !== null) {
       clearTimeout(state.cleanupTimer);
