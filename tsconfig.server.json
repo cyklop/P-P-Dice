@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "noEmit": false,
+    "incremental": false,
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "jsx": "react"
+  },
+  "include": [
+    "server.ts",
+    "src/lib/types.ts",
+    "src/lib/constants.ts",
+    "src/server/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    ".next",
+    "dist"
+  ]
+}

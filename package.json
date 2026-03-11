@@ -1,18 +1,22 @@
 {
   "name": "pp-dice",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "main": "server-passenger.js",
   "scripts": {
-    "dev": "next dev",
-    "dev:server": "tsx server.ts",
-    "build": "next build",
-    "start": "NODE_ENV=production tsx server.ts",
+    "dev": "tsx server.ts",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:next": "next build",
+    "build": "npm run build:server && npm run build:next",
+    "start": "node server-passenger.js",
     "lint": "next lint"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
     "cannon-es": "^0.20.0",
+    "dotenv": "^17.3.1",
+    "module-alias": "^2.3.4",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

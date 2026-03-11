@@ -9,13 +9,19 @@ import type {
 import { setupSocketHandlers } from './src/server/socket-handler';
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 
-const app = next({ dev, hostname, port });
-const handle = app.getRequestHandler();
+/**
+ * Initialize the server (Next.js + Socket.IO).
+ * Returns { httpServer, io } for Passenger integration.
+ */
+export async function initializeServer() {
+  const app = next({ dev, hostname, port });
+  const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+  await app.prepare();
+
   const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url!, true);
     handle(req, res, parsedUrl);
@@ -30,12 +36,18 @@ app.prepare().then(() => {
     }
   );
 
-  // Register all socket event handlers
   setupSocketHandlers(io);
 
-  httpServer.listen(port, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log(`> Socket.io server running`);
-    console.log(`> Environment: ${dev ? 'development' : 'production'}`);
+  return { httpServer, io };
+}
+
+// Direct execution (dev mode or standalone start)
+if (require.main === module || !module.parent) {
+  initializeServer().then(({ httpServer }) => {
+    httpServer.listen(port, () => {
+      console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> Socket.io server running`);
+      console.log(`> Environment: ${dev ? 'development' : 'production'}`);
+    });
   });
-});
+}
