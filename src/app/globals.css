@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ------------------------------------------------------------------ */
+/* Theme color tokens – switch via .dark / .light class on <html>     */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --color-primary: #f59e0b;
+  --color-primary-light: #fbbf24;
+  --color-primary-dark: #d97706;
+  --color-accent: #b45309;
+  --color-border-fantasy: #92400e;
+}
+
+/* Dark mode (default) */
+.dark,
+:root:not(.light) {
+  --color-bg: #0f172a;
+  --color-bg-light: #1e293b;
+  --color-bg-card: #1e293b;
+  --color-surface: #334155;
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+}
+
+/* Light mode – parchment / scroll aesthetic */
+.light {
+  --color-bg: #f5f0e8;
+  --color-bg-light: #ede5d8;
+  --color-bg-card: #faf6ef;
+  --color-surface: #d6cec2;
+  --color-text: #1c1917;
+  --color-text-muted: #57534e;
+  --color-primary: #d97706;
+  --color-primary-light: #b45309;
+  --color-primary-dark: #92400e;
+  --color-accent: #78350f;
+  --color-border-fantasy: #b45309;
+}
+
+/* Respect system preference when set to auto (no .dark / .light class) */
+@media (prefers-color-scheme: light) {
+  :root:not(.dark):not(.light) {
+    --color-bg: #f5f0e8;
+    --color-bg-light: #ede5d8;
+    --color-bg-card: #faf6ef;
+    --color-surface: #d6cec2;
+    --color-text: #1c1917;
+    --color-text-muted: #57534e;
+    --color-primary: #d97706;
+    --color-primary-light: #b45309;
+    --color-primary-dark: #92400e;
+    --color-accent: #78350f;
+    --color-border-fantasy: #b45309;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Register tokens with Tailwind v4 @theme so utilities work          */
+/* ------------------------------------------------------------------ */
+
+@theme {
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-accent: var(--color-accent);
+  --color-bg: var(--color-bg);
+  --color-bg-light: var(--color-bg-light);
+  --color-bg-card: var(--color-bg-card);
+  --color-surface: var(--color-surface);
+  --color-text: var(--color-text);
+  --color-text-muted: var(--color-text-muted);
+  --color-border-fantasy: var(--color-border-fantasy);
+  --font-heading: 'Cinzel', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base styles                                                         */
+/* ------------------------------------------------------------------ */
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Fantasy decorative border */
+.fantasy-border {
+  border: 2px solid var(--color-border-fantasy);
+  box-shadow:
+    inset 0 0 20px rgba(180, 83, 9, 0.1),
+    0 0 15px rgba(245, 158, 11, 0.08);
+}
+
+.light .fantasy-border {
+  box-shadow:
+    inset 0 0 20px rgba(180, 83, 9, 0.06),
+    0 0 15px rgba(180, 83, 9, 0.05);
+}
+
+/* Glow effect for primary elements */
+.glow-amber {
+  box-shadow:
+    0 0 15px rgba(245, 158, 11, 0.3),
+    0 0 30px rgba(245, 158, 11, 0.1);
+}
+
+.light .glow-amber {
+  box-shadow:
+    0 0 10px rgba(217, 119, 6, 0.2),
+    0 0 20px rgba(217, 119, 6, 0.08);
+}
+
+/* ------------------------------------------------------------------ */
+/* Animations                                                          */
+/* ------------------------------------------------------------------ */
+
+@keyframes dice-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-8px) rotate(3deg); }
+  75% { transform: translateY(4px) rotate(-2deg); }
+}
+
+@keyframes dice-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-dice-float {
+  animation: dice-float 4s ease-in-out infinite;
+}
+
+.animate-dice-spin {
+  animation: dice-spin 6s linear infinite;
+}
+
+/* Shimmer text effect for headings */
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-primary-dark) 0%,
+    var(--color-primary-light) 25%,
+    var(--color-primary) 50%,
+    var(--color-primary-light) 75%,
+    var(--color-primary-dark) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 4s linear infinite;
+}

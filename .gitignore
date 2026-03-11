@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+test-results/
+test-screenshots/
+playwright-report/
+coverage/
+
+# Ad-hoc test scripts
+e2e-*.mjs
+pp-dice-test*.mjs
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+
+# Claude Code
+.claude/
