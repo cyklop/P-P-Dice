@@ -1,23 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useTheme, type ThemePreference } from '@/hooks/useTheme';
-
-// ---------------------------------------------------------------------------
-// SVG icons (no external library)
-// ---------------------------------------------------------------------------
 
 function SunIcon({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <circle cx="12" cy="12" r="5" />
       <line x1="12" y1="1" x2="12" y2="3" />
       <line x1="12" y1="21" x2="12" y2="23" />
@@ -33,16 +21,7 @@ function SunIcon({ className }: { className?: string }) {
 
 function MoonIcon({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
     </svg>
   );
@@ -50,16 +29,7 @@ function MoonIcon({ className }: { className?: string }) {
 
 function MonitorIcon({ className }: { className?: string }) {
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
       <line x1="8" y1="21" x2="16" y2="21" />
       <line x1="12" y1="17" x2="12" y2="21" />
@@ -67,29 +37,22 @@ function MonitorIcon({ className }: { className?: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Labels for tooltip / aria
-// ---------------------------------------------------------------------------
-
-const LABELS: Record<ThemePreference, string> = {
-  auto: 'System-Thema (automatisch)',
-  dark: 'Dunkles Thema',
-  light: 'Helles Thema',
-};
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const t = useTranslations('theme');
+
+  const labels: Record<ThemePreference, string> = {
+    auto: t('auto'),
+    dark: t('dark'),
+    light: t('light'),
+  };
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={LABELS[theme]}
-      title={LABELS[theme]}
+      aria-label={labels[theme]}
+      title={labels[theme]}
       className="
         group relative flex h-9 w-9 items-center justify-center
         rounded-lg border-2 border-border-fantasy
@@ -101,7 +64,6 @@ export default function ThemeToggle() {
         cursor-pointer
       "
     >
-      {/* The three icons are stacked; only the active one is visible. */}
       <span className="relative h-4.5 w-4.5">
         <SunIcon
           className={`absolute inset-0 h-4.5 w-4.5 transition-all duration-300 ${

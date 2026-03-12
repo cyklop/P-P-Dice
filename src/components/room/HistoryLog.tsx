@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import type { DiceResult, Player } from '@/lib/types';
 
 export interface HistoryLogProps {
@@ -8,25 +9,26 @@ export interface HistoryLogProps {
   players: Player[];
 }
 
-/** Format a timestamp into a relative German string like "vor 2 Min". */
-function formatRelativeTime(timestamp: number): string {
-  const now = Date.now();
-  const diffMs = now - timestamp;
-  const diffSec = Math.floor(diffMs / 1000);
+function useRelativeTimeFormatter() {
+  const t = useTranslations('history');
 
-  if (diffSec < 10) return 'gerade eben';
-  if (diffSec < 60) return `vor ${diffSec} Sek`;
+  return (timestamp: number): string => {
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffSec = Math.floor(diffMs / 1000);
 
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `vor ${diffMin} Min`;
+    if (diffSec < 10) return t('justNow');
+    if (diffSec < 60) return t('secondsAgo', { seconds: diffSec });
 
-  const diffHr = Math.floor(diffMin / 60);
-  return `vor ${diffHr} Std`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return t('minutesAgo', { minutes: diffMin });
+
+    const diffHr = Math.floor(diffMin / 60);
+    return t('hoursAgo', { hours: diffHr });
+  };
 }
 
-/** Format dice results showing individual values, e.g. "2D6: [4, 3] = 7". */
 function formatResultDetail(result: DiceResult): string {
-  // Group by dice type
   const grouped: Record<string, number[]> = {};
   for (const r of result.results) {
     if (!grouped[r.type]) {
@@ -47,25 +49,24 @@ function formatResultDetail(result: DiceResult): string {
 }
 
 export default function HistoryLog({ history, players }: HistoryLogProps) {
+  const t = useTranslations('history');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const formatRelativeTime = useRelativeTimeFormatter();
 
-  // Build a lookup from player id to player
   const playerMap = new Map(players.map((p) => [p.id, p]));
 
-  // Auto-scroll to newest entry (top) when history changes
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   }, [history.length]);
 
-  // Show newest first
   const sorted = [...history].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
     <div className="flex flex-col">
       <h3 className="mb-2 font-heading text-sm font-semibold uppercase tracking-wider text-primary">
-        Würfel-History
+        {t('title')}
       </h3>
 
       <div
@@ -76,13 +77,13 @@ export default function HistoryLog({ history, players }: HistoryLogProps) {
       >
         {sorted.length === 0 && (
           <p className="py-6 text-center text-sm text-text-muted">
-            Noch keine Würfe.
+            {t('empty')}
           </p>
         )}
 
         {sorted.map((entry, idx) => {
           const player = playerMap.get(entry.playerId);
-          const playerName = player?.name ?? 'Unbekannt';
+          const playerName = player?.name ?? t('unknown');
           const playerColor = player?.color ?? '#94a3b8';
 
           return (
@@ -91,7 +92,6 @@ export default function HistoryLog({ history, players }: HistoryLogProps) {
               className="rounded-lg bg-bg-light/50 px-3 py-2"
             >
               <div className="flex items-center justify-between gap-2">
-                {/* Player info */}
                 <div className="flex items-center gap-2 min-w-0">
                   <span
                     className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -103,13 +103,11 @@ export default function HistoryLog({ history, players }: HistoryLogProps) {
                   </span>
                 </div>
 
-                {/* Timestamp */}
                 <span className="shrink-0 text-[10px] text-text-muted">
                   {formatRelativeTime(entry.timestamp)}
                 </span>
               </div>
 
-              {/* Result detail */}
               <p className="mt-1 text-xs text-text-muted">
                 {formatResultDetail(entry)}
               </p>

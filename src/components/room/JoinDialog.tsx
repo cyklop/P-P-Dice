@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import ColorPicker from '@/components/room/ColorPicker';
 import { PLAYER_COLORS } from '@/lib/constants';
 
@@ -23,7 +24,6 @@ function getSavedColor(takenColors: string[]): string | null {
   } catch {
     // ignore
   }
-  // Fallback: random available color
   const available = PLAYER_COLORS.filter((c) => !takenColors.includes(c));
   if (available.length === 0) return null;
   return available[Math.floor(Math.random() * available.length)];
@@ -38,13 +38,9 @@ function saveColor(color: string) {
 }
 
 export interface JoinDialogProps {
-  /** Colors already taken by other players in the room. */
   takenColors: string[];
-  /** Names already used by players in the room. */
   existingNames?: string[];
-  /** Called when the user submits a valid name + color combination. */
   onJoin: (name: string, color: string) => void;
-  /** Controls dialog visibility. */
   isOpen: boolean;
 }
 
@@ -54,13 +50,13 @@ export default function JoinDialog({
   onJoin,
   isOpen,
 }: JoinDialogProps) {
+  const t = useTranslations('join');
   const [name, setName] = useState(() => getSavedName());
   const [selectedColor, setSelectedColor] = useState<string | null>(() => getSavedColor(takenColors));
   const [touched, setTouched] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const initializedRef = useRef(false);
 
-  // Focus the name input when the dialog opens.
   useEffect(() => {
     if (isOpen) {
       const id = setTimeout(() => nameInputRef.current?.focus(), 50);
@@ -68,7 +64,6 @@ export default function JoinDialog({
     }
   }, [isOpen]);
 
-  // Re-initialize color once takenColors are known (they arrive async)
   useEffect(() => {
     if (initializedRef.current) return;
     if (takenColors.length > 0 || isOpen) {
@@ -80,7 +75,6 @@ export default function JoinDialog({
     }
   }, [takenColors, isOpen]);
 
-  // If the previously selected color gets taken, pick a new one.
   useEffect(() => {
     if (selectedColor && takenColors.includes(selectedColor)) {
       setSelectedColor(getSavedColor(takenColors));
@@ -108,24 +102,20 @@ export default function JoinDialog({
   if (!isOpen) return null;
 
   return (
-    /* ----- Backdrop ----- */
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      {/* ----- Dialog Panel ----- */}
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-xl border border-amber-900/50 bg-gray-900/95 p-6 shadow-2xl shadow-amber-950/30 sm:p-8"
       >
-        {/* Heading */}
         <h2 className="mb-6 text-center font-serif text-2xl font-bold tracking-wide text-amber-200 sm:text-3xl">
-          Raum beitreten
+          {t('title')}
         </h2>
 
-        {/* ----- Name Field ----- */}
         <label
           htmlFor="join-name"
           className="mb-1.5 block text-sm font-medium text-amber-100/80"
         >
-          Dein Name
+          {t('yourName')}
         </label>
         <input
           ref={nameInputRef}
@@ -135,7 +125,7 @@ export default function JoinDialog({
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={() => setTouched(true)}
-          placeholder="Abenteurername eingeben..."
+          placeholder={t('namePlaceholder')}
           autoComplete="off"
           className={`
             mb-1 w-full rounded-lg border bg-gray-800/80 px-4 py-2.5 text-gray-100
@@ -150,21 +140,20 @@ export default function JoinDialog({
         />
         {touched && trimmedName.length === 0 && (
           <p className="mb-3 text-xs text-red-400">
-            Bitte gib einen Namen ein.
+            {t('nameRequired')}
           </p>
         )}
         {isNameTaken && (
           <p className="mb-3 text-xs text-amber-400">
-            Dieser Name wird bereits im Raum verwendet.
+            {t('nameTaken')}
           </p>
         )}
         {!isNameTaken && !(touched && trimmedName.length === 0) && (
           <p className="mb-3 text-xs text-transparent">&#8203;</p>
         )}
 
-        {/* ----- Color Picker ----- */}
         <p className="mb-2 text-sm font-medium text-amber-100/80">
-          Wähle deine Farbe
+          {t('chooseColor')}
         </p>
         <div className="mb-1">
           <ColorPicker
@@ -175,7 +164,7 @@ export default function JoinDialog({
         </div>
         {touched && selectedColor === null && (
           <p className="mt-1 mb-3 text-center text-xs text-red-400">
-            Bitte wähle eine Farbe.
+            {t('colorRequired')}
           </p>
         )}
         {!(touched && selectedColor === null) && (
@@ -184,7 +173,6 @@ export default function JoinDialog({
           </p>
         )}
 
-        {/* ----- Submit ----- */}
         <button
           type="submit"
           disabled={touched && !isValid}
@@ -198,7 +186,7 @@ export default function JoinDialog({
             }
           `}
         >
-          Beitreten
+          {t('submit')}
         </button>
       </form>
     </div>

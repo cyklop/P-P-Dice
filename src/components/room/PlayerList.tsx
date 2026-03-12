@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { Player, DiceResult, RollMode } from '@/lib/types';
 
 export interface PlayerListProps {
@@ -10,9 +11,7 @@ export interface PlayerListProps {
   rollMode?: RollMode;
 }
 
-/** Format a single DiceResult into a short summary like "D20: 17" or "2D6: 11". */
 function formatLastResult(result: DiceResult): string {
-  // Group dice by type and sum values
   const grouped: Record<string, { count: number; total: number }> = {};
   for (const r of result.results) {
     if (!grouped[r.type]) {
@@ -36,10 +35,13 @@ export default function PlayerList({
   readyPlayers = [],
   rollMode = 'free',
 }: PlayerListProps) {
+  const t = useTranslations('players');
+  const tc = useTranslations('common');
+
   return (
     <div className="space-y-1">
       <h3 className="mb-2 font-heading text-sm font-semibold uppercase tracking-wider text-primary">
-        Teilnehmer ({players.length})
+        {t('title', { count: players.length })}
       </h3>
 
       <ul className="space-y-1.5" role="list">
@@ -59,14 +61,12 @@ export default function PlayerList({
                     : 'bg-bg-light/50'
               }`}
             >
-              {/* Color indicator */}
               <span
                 className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-white/20"
                 style={{ backgroundColor: player.color }}
                 aria-hidden="true"
               />
 
-              {/* Name + badges */}
               <span className="flex min-w-0 flex-1 items-center gap-1.5">
                 <span
                   className={`truncate text-sm ${
@@ -93,30 +93,28 @@ export default function PlayerList({
 
                 {isMe && (
                   <span className="shrink-0 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-light">
-                    Du
+                    {t('you')}
                   </span>
                 )}
                 {isReady && (
                   <span className="shrink-0 rounded-full bg-green-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-400">
-                    Bereit
+                    {t('ready')}
                   </span>
                 )}
               </span>
 
-              {/* Last dice result */}
               {lastResult && (
                 <span className="shrink-0 text-xs text-text-muted">
                   {formatLastResult(lastResult)}
                 </span>
               )}
 
-              {/* Connection status */}
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
                   player.connected ? 'bg-green-500' : 'bg-gray-500'
                 }`}
-                title={player.connected ? 'Verbunden' : 'Getrennt'}
-                aria-label={player.connected ? 'Verbunden' : 'Getrennt'}
+                title={player.connected ? tc('connected') : tc('disconnected')}
+                aria-label={player.connected ? tc('connected') : tc('disconnected')}
               />
             </li>
           );

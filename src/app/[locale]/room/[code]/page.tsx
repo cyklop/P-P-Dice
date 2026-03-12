@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { DiceScene } from '@/components/3d/DiceScene';
 import type { DiceProps } from '@/components/3d/Dice';
 import JoinDialog from '@/components/room/JoinDialog';
@@ -9,13 +10,14 @@ import Sidebar from '@/components/room/Sidebar';
 import HostPanel from '@/components/room/HostPanel';
 import { useSocket } from '@/hooks/useSocket';
 import type { DiceResult } from '@/lib/types';
+import { useLocale } from 'next-intl';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface RoomPageProps {
-  params: Promise<{ code: string }>;
+  params: Promise<{ code: string; locale: string }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -26,6 +28,9 @@ export default function RoomPage({ params }: RoomPageProps) {
   const { code } = use(params);
   const upperCode = code.toUpperCase();
   const isCreating = upperCode === 'NEW';
+  const t = useTranslations('room');
+  const tc = useTranslations('common');
+  const locale = useLocale();
 
   // Socket connection
   const {
@@ -65,19 +70,17 @@ export default function RoomPage({ params }: RoomPageProps) {
   // Auto-reconnect: if roomState arrives via reconnect token, skip join dialog
   useEffect(() => {
     if (roomState && playerId && !hasJoined) {
-      // We reconnected successfully
       hasJoinedRef.current = true;
       setHasJoined(true);
       if (roomState.code) {
         roomCodeRef.current = roomState.code;
         setRoomCode(roomState.code);
-        // Update URL if it was different (e.g. page was at /room/NEW)
         if (roomState.code !== upperCode) {
-          window.history.replaceState(window.history.state, '', `/room/${roomState.code}`);
+          window.history.replaceState(window.history.state, '', `/${locale}/room/${roomState.code}`);
         }
       }
     }
-  }, [roomState, playerId, hasJoined, upperCode]);
+  }, [roomState, playerId, hasJoined, upperCode, locale]);
 
   // Poll room info (taken colors, player names) while join dialog is open
   useEffect(() => {
@@ -91,7 +94,6 @@ export default function RoomPage({ params }: RoomPageProps) {
       }).catch(() => { /* ignore */ });
     };
 
-    // Fetch immediately + poll every 3 seconds
     poll();
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
@@ -118,24 +120,24 @@ export default function RoomPage({ params }: RoomPageProps) {
           setRoomCode(newCode);
           hasJoinedRef.current = true;
           setHasJoined(true);
-          window.history.replaceState(window.history.state, '', `/room/${newCode}`);
+          window.history.replaceState(window.history.state, '', `/${locale}/room/${newCode}`);
         } else {
           const ok = await joinRoom(roomCode!, name, color);
           if (ok) {
             hasJoinedRef.current = true;
             setHasJoined(true);
           } else {
-            setJoinError('Beitritt fehlgeschlagen. Prüfe den Raum-Code.');
+            setJoinError(t('joinFailed'));
           }
         }
       } catch {
-        setJoinError('Verbindungsfehler. Bitte versuche es erneut.');
+        setJoinError(t('connectionError'));
       }
     },
-    [joinRoom, createRoom, roomCode, isCreating],
+    [joinRoom, createRoom, roomCode, isCreating, t, locale],
   );
 
-  // Throw handler: sends throw over socket for a given set
+  // Throw handler
   const handleThrow = useCallback(
     (setId: string) => {
       throwDice(setId);
@@ -161,11 +163,9 @@ export default function RoomPage({ params }: RoomPageProps) {
   const existingNames = roomInfo?.playerNames ?? roomState?.players.map((p) => p.name) ?? [];
 
   // Build static dice from ALL players' last resting positions.
-  // Skip the player whose dice are currently animating.
   const staticDice: DiceProps[] = useMemo(() => {
     const result: DiceProps[] = [];
 
-    // In simultaneous mode, dicePlayerMap contains ALL animating player IDs
     const animatingPlayerIds = new Set<string>();
     if (activeAnimation) {
       if (activeAnimation.dicePlayerMap) {
@@ -178,11 +178,9 @@ export default function RoomPage({ params }: RoomPageProps) {
     }
 
     for (const [pid, state] of playerDice) {
-      // Skip players whose throw is currently animating
       if (animatingPlayerIds.has(pid)) continue;
       if (!state.lastFrame) continue;
 
-      // Find the player's color
       const player = roomState?.players.find((p) => p.id === pid);
       const color = player?.color ?? '#c2782e';
 
@@ -209,12 +207,12 @@ export default function RoomPage({ params }: RoomPageProps) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-6">
         <h1 className="font-heading text-4xl font-bold text-primary-light tracking-wide">
-          {isCreating ? 'Neuen Raum erstellen' : `Raum: ${upperCode}`}
+          {isCreating ? t('createTitle') : t('roomTitle', { code: upperCode })}
         </h1>
 
         {!connected && (
           <p className="text-text-muted text-sm animate-pulse">
-            Verbindung wird hergestellt...
+            {tc('connecting')}
           </p>
         )}
 
@@ -236,7 +234,7 @@ export default function RoomPage({ params }: RoomPageProps) {
                      hover:border-primary hover:text-primary
                      transition-colors duration-200"
         >
-          Zurück zur Startseite
+          {tc('backToHome')}
         </Link>
       </main>
     );
@@ -254,17 +252,17 @@ export default function RoomPage({ params }: RoomPageProps) {
         <button
           type="button"
           onClick={() => {
-            const url = `${window.location.origin}/room/${roomCode ?? upperCode}`;
+            const url = `${window.location.origin}/${locale}/room/${roomCode ?? upperCode}`;
             navigator.clipboard.writeText(url).then(() => {
               setCodeCopied(true);
               setTimeout(() => setCodeCopied(false), 2000);
             });
           }}
           className="absolute left-4 top-4 z-20 flex items-center gap-1.5 rounded-lg border border-border-fantasy/40 bg-bg-card/80 px-3 py-1.5 backdrop-blur-sm transition-colors hover:bg-bg-card cursor-pointer"
-          title="Raum-Link kopieren"
+          title={t('copyLink')}
         >
           <span className="font-mono text-sm font-bold tracking-widest text-primary-light">
-            {codeCopied ? 'Kopiert!' : (roomCode ?? upperCode)}
+            {codeCopied ? tc('copied') : (roomCode ?? upperCode)}
           </span>
           {!codeCopied && (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-text-muted">
@@ -276,7 +274,7 @@ export default function RoomPage({ params }: RoomPageProps) {
             className={`inline-block h-2 w-2 rounded-full ${
               connected ? 'bg-green-500' : 'bg-red-500'
             }`}
-            title={connected ? 'Verbunden' : 'Getrennt'}
+            title={connected ? tc('connected') : tc('disconnected')}
           />
         </button>
 
@@ -336,7 +334,7 @@ export default function RoomPage({ params }: RoomPageProps) {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-4 w-4 transition-transform ${hostPanelOpen ? 'rotate-90' : ''}`}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-            Host-Steuerung
+            {t('hostControls')}
           </button>
           {hostPanelOpen && (
             <div className="absolute left-4 top-[5.5rem] bottom-4 z-10 w-96 overflow-y-auto rounded-xl border border-border-fantasy/40 bg-bg-card/95 p-4 shadow-xl backdrop-blur-md">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Room, DiceSet, DiceType } from '@/lib/types';
 import {
   GENERIC_PRESETS,
@@ -161,6 +162,8 @@ function DiceSetEditor({
   onSave: (draft: DiceSetDraft) => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations('dice');
+  const tc = useTranslations('common');
   const [name, setName] = useState(initial?.name ?? '');
   const [dice, setDice] = useState<{ type: DiceType; count: number }[]>(
     initial?.dice ?? [{ type: 'D6', count: 1 }],
@@ -195,19 +198,19 @@ function DiceSetEditor({
     <div className="mt-2 space-y-3 rounded-lg border border-primary/30 bg-bg/60 p-3">
       {/* Name */}
       <div>
-        <label className="mb-1 block text-xs text-text-muted">Name</label>
+        <label className="mb-1 block text-xs text-text-muted">{tc('name')}</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="z.B. Angriff"
+          placeholder={t('setPlaceholder')}
           className="w-full rounded-md border border-border-fantasy/40 bg-bg-light px-2.5 py-1.5 text-sm text-text placeholder:text-text-muted/50 focus:border-primary focus:outline-none"
         />
       </div>
 
       {/* Dice rows */}
       <div className="space-y-2">
-        <label className="block text-xs text-text-muted">Würfel</label>
+        <label className="block text-xs text-text-muted">{t('diceLabel')}</label>
         {dice.map((d, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
@@ -235,7 +238,7 @@ function DiceSetEditor({
               onClick={() => removeDie(i)}
               disabled={dice.length <= 1}
               className="rounded p-1 text-red-400 transition-colors hover:bg-red-400/10 disabled:opacity-30"
-              title="Würfel entfernen"
+              title={t('removeDie')}
             >
               <TrashIcon />
             </button>
@@ -248,7 +251,7 @@ function DiceSetEditor({
           className="flex items-center gap-1 text-xs text-primary hover:text-primary-light"
         >
           <PlusIcon />
-          Würfel hinzufügen
+          {t('addDie')}
         </button>
       </div>
 
@@ -260,14 +263,14 @@ function DiceSetEditor({
           disabled={!name.trim()}
           className="rounded-md bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary-light transition-colors hover:bg-primary/30 disabled:opacity-40"
         >
-          Speichern
+          {tc('save')}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="rounded-md px-3 py-1.5 text-xs text-text-muted transition-colors hover:text-text"
         >
-          Abbrechen
+          {tc('cancel')}
         </button>
       </div>
     </div>
@@ -286,6 +289,9 @@ export default function HostPanel({
   onClearHistory,
   onUpdateSets,
 }: HostPanelProps) {
+  const t = useTranslations('host');
+  const tc = useTranslations('common');
+
   // Confirmation states
   const [clearConfirm, setClearConfirm] = useState(false);
   const [kickConfirm, setKickConfirm] = useState<string | null>(null);
@@ -329,7 +335,7 @@ export default function HostPanel({
         setTimeout(() => setCopied(false), 2000);
       } catch {
         // Last resort: prompt user
-        window.prompt('Link kopieren:', link);
+        window.prompt(t('copyPrompt'), link);
       }
     }
   }, [room.code]);
@@ -454,11 +460,11 @@ export default function HostPanel({
   return (
     <div className="space-y-3">
       <h2 className="font-heading text-sm font-bold uppercase tracking-widest text-primary-light">
-        Host-Steuerung
+        {t('title')}
       </h2>
 
       {/* ---- Section 1: Room Info & Invite ---- */}
-      <Section title="Raum & Einladung" defaultOpen>
+      <Section title={t('roomAndInvite')} defaultOpen>
         <div className="space-y-3">
           {/* Room code */}
           <div className="flex items-center gap-2">
@@ -471,7 +477,7 @@ export default function HostPanel({
               className="flex items-center gap-1.5 rounded-md bg-primary/20 px-2.5 py-1.5 text-xs font-medium text-primary-light transition-colors hover:bg-primary/30"
             >
               <CopyIcon />
-              {copied ? 'Kopiert!' : 'Link kopieren'}
+              {copied ? tc('copied') : t('copyLink')}
             </button>
           </div>
 
@@ -483,14 +489,14 @@ export default function HostPanel({
               }`}
             />
             <span className="text-text-muted">
-              Status: <span className="font-medium text-text">{room.isLocked ? 'Gesperrt' : 'Offen'}</span>
+              {t('statusLabel')} <span className="font-medium text-text">{room.isLocked ? t('statusLocked') : t('statusOpen')}</span>
             </span>
           </div>
         </div>
       </Section>
 
       {/* ---- Section 2: Room Controls ---- */}
-      <Section title="Raum-Steuerung" defaultOpen>
+      <Section title={t('roomControls')} defaultOpen>
         <div className="flex flex-wrap gap-2">
           {/* Lock toggle */}
           <button
@@ -503,7 +509,7 @@ export default function HostPanel({
             }`}
           >
             <LockIcon locked={room.isLocked} />
-            {room.isLocked ? 'Entsperren' : 'Sperren'}
+            {room.isLocked ? t('unlock') : t('lock')}
           </button>
 
           {/* Clear history */}
@@ -516,15 +522,15 @@ export default function HostPanel({
                 : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
             }`}
           >
-            {clearConfirm ? 'Sicher?' : 'History löschen'}
+            {clearConfirm ? t('clearConfirm') : t('clearHistory')}
           </button>
         </div>
       </Section>
 
       {/* ---- Section 3: Player Management ---- */}
-      <Section title="Spieler" defaultOpen>
+      <Section title={t('playersSection')} defaultOpen>
         {nonHostPlayers.length === 0 ? (
-          <p className="text-xs text-text-muted">Keine weiteren Spieler im Raum.</p>
+          <p className="text-xs text-text-muted">{t('noOtherPlayers')}</p>
         ) : (
           <ul className="space-y-1.5">
             {nonHostPlayers.map((player) => (
@@ -547,7 +553,7 @@ export default function HostPanel({
                       : 'text-red-400 hover:bg-red-500/15'
                   }`}
                 >
-                  {kickConfirm === player.id ? 'Wirklich kicken?' : 'Kicken'}
+                  {kickConfirm === player.id ? t('kickConfirm') : t('kick')}
                 </button>
               </li>
             ))}
@@ -556,7 +562,7 @@ export default function HostPanel({
       </Section>
 
       {/* ---- Section 4: Dice Set Editor ---- */}
-      <Section title="Würfel-Sets bearbeiten" defaultOpen>
+      <Section title={t('editSets')} defaultOpen>
         <div className="space-y-2">
           {/* Existing sets */}
           {room.sets.map((set, index) => {
@@ -584,7 +590,7 @@ export default function HostPanel({
                       onClick={() => handleMoveSet(index, -1)}
                       disabled={index === 0}
                       className="rounded p-0.5 text-text-muted transition-colors hover:text-primary disabled:opacity-20"
-                      title="Nach oben"
+                      title={t('moveUp')}
                     >
                       <ArrowUpIcon />
                     </button>
@@ -593,7 +599,7 @@ export default function HostPanel({
                       onClick={() => handleMoveSet(index, 1)}
                       disabled={index === room.sets.length - 1}
                       className="rounded p-0.5 text-text-muted transition-colors hover:text-primary disabled:opacity-20"
-                      title="Nach unten"
+                      title={t('moveDown')}
                     >
                       <ArrowDownIcon />
                     </button>
@@ -613,7 +619,7 @@ export default function HostPanel({
                       setEditingSetId(set.id);
                     }}
                     className="rounded p-1 text-primary transition-colors hover:bg-primary/15"
-                    title="Bearbeiten"
+                    title={tc('edit')}
                   >
                     <PencilIcon />
                   </button>
@@ -621,7 +627,7 @@ export default function HostPanel({
                     type="button"
                     onClick={() => handleDeleteSet(set.id)}
                     className="rounded p-1 text-red-400 transition-colors hover:bg-red-400/15"
-                    title="Löschen"
+                    title={tc('delete')}
                   >
                     <TrashIcon />
                   </button>
@@ -631,7 +637,7 @@ export default function HostPanel({
           })}
 
           {room.sets.length === 0 && !creatingSet && (
-            <p className="text-xs text-text-muted">Noch keine Sets vorhanden.</p>
+            <p className="text-xs text-text-muted">{t('noSets')}</p>
           )}
 
           {/* New set form */}
@@ -650,7 +656,7 @@ export default function HostPanel({
               className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-primary/40 py-2 text-xs font-semibold text-primary transition-colors hover:border-primary hover:bg-primary/10"
             >
               <PlusIcon />
-              Neues Set erstellen
+              {t('createSet')}
             </button>
           )}
 
@@ -663,7 +669,7 @@ export default function HostPanel({
                   value={savePresetName}
                   onChange={(e) => setSavePresetName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveAsPreset()}
-                  placeholder="Preset-Name..."
+                  placeholder={t('presetName')}
                   className="flex-1 rounded-md border border-border-fantasy/40 bg-bg-light/50 px-2 py-1.5 text-xs text-text placeholder:text-text-muted focus:border-primary focus:outline-none"
                   autoFocus
                 />
@@ -673,14 +679,14 @@ export default function HostPanel({
                   disabled={!savePresetName.trim()}
                   className="rounded-md bg-primary/20 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/30 disabled:opacity-40"
                 >
-                  Speichern
+                  {tc('save')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowSavePreset(false); setSavePresetName(''); }}
                   className="rounded-md px-2 py-1.5 text-xs text-text-muted transition-colors hover:text-text"
                 >
-                  Abbrechen
+                  {tc('cancel')}
                 </button>
               </div>
             ) : (
@@ -692,7 +698,7 @@ export default function HostPanel({
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
                   <path d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z" />
                 </svg>
-                Sets als Preset speichern
+                {t('saveAsPreset')}
               </button>
             )
           )}
@@ -705,7 +711,7 @@ export default function HostPanel({
               className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-amber-600/40 py-2 text-xs font-semibold text-amber-400 transition-colors hover:border-amber-500 hover:bg-amber-500/10"
             >
               <PlusIcon />
-              Preset laden
+              {t('loadPreset')}
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={`h-3 w-3 transition-transform ${presetMenuOpen ? 'rotate-180' : ''}`}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
@@ -717,7 +723,7 @@ export default function HostPanel({
                 {customPresets.length > 0 && (
                   <>
                     <div className="border-b border-border-fantasy/30 px-3 py-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">Eigene Presets</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">{t('customPresets')}</span>
                     </div>
                     {customPresets.map((cp) => (
                       <div
@@ -735,7 +741,7 @@ export default function HostPanel({
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); handleDeleteCustomPreset(cp.id); }}
-                          title="Preset löschen"
+                          title={t('deletePreset')}
                           className="mt-0.5 shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-red-500/20 hover:text-red-400"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
@@ -749,7 +755,7 @@ export default function HostPanel({
 
                 {/* Generische Sets */}
                 <div className="border-b border-border-fantasy/30 px-3 py-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">Generisch</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{t('genericPresets')}</span>
                 </div>
                 <div className="flex flex-wrap gap-1 px-2 py-1.5">
                   {GENERIC_PRESETS.map((preset) => (
@@ -766,7 +772,7 @@ export default function HostPanel({
 
                 {/* RPG-System-Pakete */}
                 <div className="border-b border-t border-border-fantasy/30 px-3 py-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">RPG-Systeme</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{t('rpgPresets')}</span>
                 </div>
                 {RPG_PRESETS.map((pkg) => (
                   <button

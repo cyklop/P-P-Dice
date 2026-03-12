@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import type { DiceSet, RollMode, SimultaneousSubMode } from '@/lib/types';
 
 export interface DiceSetSelectorProps {
@@ -13,18 +14,14 @@ export interface DiceSetSelectorProps {
   isPlayerReady?: boolean;
   readyCount?: number;
   totalPlayers?: number;
-  /** Set ID locked by first player in same-set mode. */
   simultaneousSetId?: string | null;
-  /** Per-player set choices (playerId -> setId). */
   readyPlayerSets?: Record<string, string>;
 }
 
-/** Format a dice set composition like "2D6 + 1D8". */
 function formatComposition(set: DiceSet): string {
   return set.dice.map((d) => `${d.count}${d.type}`).join(' + ');
 }
 
-/** Small inline SVG icon representing a die face. */
 function DiceIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -58,40 +55,37 @@ export default function DiceSetSelector({
   simultaneousSetId = null,
   readyPlayerSets = {},
 }: DiceSetSelectorProps) {
-  // Determine if throw button should be disabled
+  const t = useTranslations('dice');
+
   const isSequentialLocked = rollMode === 'sequential' && throwLocked !== null && throwLocked !== currentPlayerId;
   const isSimultaneous = rollMode === 'simultaneous';
 
-  // In same-set mode, once a player has chosen a set, all others are locked to that set
   const isSameSetMode = isSimultaneous && simultaneousSubMode === 'same-set';
   const lockedSetId = isSameSetMode ? simultaneousSetId : null;
 
-  // The current player's chosen set (if they already clicked Bereit)
   const myChosenSetId = currentPlayerId ? readyPlayerSets[currentPlayerId] : undefined;
 
   return (
     <div className="space-y-2">
       <h3 className="mb-2 font-heading text-sm font-semibold uppercase tracking-wider text-primary">
-        Würfel-Sets
+        {t('sets')}
       </h3>
 
       {sets.length === 0 && (
         <p className="py-4 text-center text-sm text-text-muted">
-          Noch keine Sets erstellt.
+          {t('noSets')}
         </p>
       )}
 
-      {/* Ready counter for simultaneous mode */}
       {isSimultaneous && readyCount > 0 && (
         <div className="rounded-md bg-primary/10 px-3 py-1.5 text-center text-xs font-semibold text-primary-light">
-          {readyCount}/{totalPlayers} bereit
+          {t('readyCount', { ready: readyCount, total: totalPlayers })}
         </div>
       )}
 
       <div className="space-y-1.5">
         {sets.map((set) => {
-          // Determine per-set button state
-          let buttonLabel = 'Würfeln';
+          let buttonLabel = t('roll');
           let buttonDisabled = false;
           let buttonClass = 'shrink-0 rounded-lg border border-amber-700/60 bg-gradient-to-b from-amber-700 to-amber-900 px-3 py-1.5 text-sm font-bold text-amber-100 shadow-md shadow-amber-900/40 transition-all duration-150 hover:from-amber-600 hover:to-amber-800 active:scale-[0.97] glow-amber';
 
@@ -104,28 +98,25 @@ export default function DiceSetSelector({
           };
 
           if (isSequentialLocked) {
-            buttonLabel = 'Gesperrt';
+            buttonLabel = t('locked');
             buttonDisabled = true;
             buttonClass = 'shrink-0 rounded-lg border border-gray-600/40 bg-gradient-to-b from-gray-600 to-gray-700 px-3 py-1.5 text-sm font-bold text-gray-400 shadow-md cursor-not-allowed opacity-60';
           } else if (isSimultaneous) {
             if (isPlayerReady) {
-              // Player already clicked Bereit
               if (myChosenSetId === set.id) {
-                buttonLabel = 'Bereit!';
+                buttonLabel = t('readyConfirm');
                 buttonClass = 'shrink-0 rounded-lg border border-green-600/60 bg-gradient-to-b from-green-700 to-green-900 px-3 py-1.5 text-sm font-bold text-green-100 shadow-md shadow-green-900/40 cursor-default';
               } else {
-                buttonLabel = 'Gesperrt';
+                buttonLabel = t('locked');
                 buttonClass = 'shrink-0 rounded-lg border border-gray-600/40 bg-gradient-to-b from-gray-600 to-gray-700 px-3 py-1.5 text-sm font-bold text-gray-400 shadow-md cursor-not-allowed opacity-60';
               }
               buttonDisabled = true;
             } else if (isSameSetMode && lockedSetId && lockedSetId !== set.id) {
-              // Same-set mode: another player already chose a different set — lock this one
-              buttonLabel = 'Gesperrt';
+              buttonLabel = t('locked');
               buttonDisabled = true;
               buttonClass = 'shrink-0 rounded-lg border border-gray-600/40 bg-gradient-to-b from-gray-600 to-gray-700 px-3 py-1.5 text-sm font-bold text-gray-400 shadow-md cursor-not-allowed opacity-60';
             } else {
-              // Available for selection
-              buttonLabel = 'Bereit';
+              buttonLabel = t('readyBtn');
               buttonClass = 'shrink-0 rounded-lg border border-green-600/60 bg-gradient-to-b from-green-700 to-green-900 px-3 py-1.5 text-sm font-bold text-green-100 shadow-md shadow-green-900/40 transition-all duration-150 hover:from-green-600 hover:to-green-800 active:scale-[0.97]';
             }
           }

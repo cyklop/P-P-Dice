@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Player, DiceResult, DiceSet, RollMode, SimultaneousSubMode } from '@/lib/types';
 import PlayerList from '@/components/room/PlayerList';
 import DiceSetSelector from '@/components/room/DiceSetSelector';
@@ -28,31 +29,16 @@ export interface SidebarProps {
 
 type TabId = 'history' | 'stats';
 
-/** Hamburger / close icon for the mobile toggle. */
 function MenuIcon({ open }: { open: boolean }) {
   if (open) {
     return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        className="h-5 w-5"
-      >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
       </svg>
     );
   }
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      className="h-5 w-5"
-    >
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
     </svg>
   );
@@ -78,6 +64,11 @@ export default function Sidebar({
 }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('history');
+  const t = useTranslations('rollMode');
+  const td = useTranslations('dice');
+  const th = useTranslations('history');
+  const ts = useTranslations('stats');
+  const tSidebar = useTranslations('sidebar');
 
   const connectedCount = players.filter(p => p.connected).length;
   const readyCount = readyPlayers.length;
@@ -88,12 +79,12 @@ export default function Sidebar({
       {/* Roll Mode Toggle */}
       <section>
         <div className="flex items-center gap-2">
-          <div className="flex flex-1 rounded-lg bg-bg-light/40 p-0.5" role="radiogroup" aria-label="Wurf-Modus">
+          <div className="flex flex-1 rounded-lg bg-bg-light/40 p-0.5" role="radiogroup" aria-label="Roll Mode">
             {(['free', 'sequential', 'simultaneous'] as RollMode[]).map((mode) => {
               const labels: Record<RollMode, string> = {
-                free: 'Frei',
-                sequential: 'Einzeln',
-                simultaneous: 'Gemeinsam',
+                free: t('free'),
+                sequential: t('sequential'),
+                simultaneous: t('simultaneous'),
               };
               const isActive = rollMode === mode;
               return (
@@ -121,7 +112,7 @@ export default function Sidebar({
         {rollMode === 'simultaneous' && isHost && (
           <div className="mt-1.5 flex rounded-md bg-bg-light/30 p-0.5">
             {(['same-set', 'individual'] as SimultaneousSubMode[]).map((sub) => {
-              const labels: Record<SimultaneousSubMode, string> = { 'same-set': 'Gleiches Set', individual: 'Individuell' };
+              const labels: Record<SimultaneousSubMode, string> = { 'same-set': t('sameSet'), individual: t('individual') };
               return (
                 <button
                   key={sub}
@@ -141,10 +132,8 @@ export default function Sidebar({
         )}
       </section>
 
-      {/* Divider */}
       <hr className="border-border-fantasy/30" />
 
-      {/* Player List */}
       <section>
         <PlayerList
           players={players}
@@ -155,10 +144,8 @@ export default function Sidebar({
         />
       </section>
 
-      {/* Divider */}
       <hr className="border-border-fantasy/30" />
 
-      {/* Dice Set Selector */}
       <section>
         <DiceSetSelector
           sets={sets}
@@ -174,22 +161,19 @@ export default function Sidebar({
           simultaneousSetId={simultaneousSetId}
           readyPlayerSets={readyPlayerSets}
         />
-        {/* Host force-throw button */}
         {rollMode === 'simultaneous' && isHost && readyCount > 0 && readyCount < connectedCount && (
           <button
             type="button"
             onClick={onForceThrow}
             className="mt-2 w-full rounded-lg border border-amber-600/40 bg-amber-900/30 px-3 py-2 text-xs font-semibold text-amber-300 transition-colors hover:bg-amber-900/50"
           >
-            Trotzdem würfeln ({readyCount}/{connectedCount} bereit)
+            {td('forceThrow', { ready: readyCount, total: connectedCount })}
           </button>
         )}
       </section>
 
-      {/* Divider */}
       <hr className="border-border-fantasy/30" />
 
-      {/* Tabs: History / Stats */}
       <section className="flex flex-1 flex-col min-h-0">
         <div className="mb-2 flex rounded-lg bg-bg-light/40 p-0.5" role="tablist">
           <button
@@ -203,7 +187,7 @@ export default function Sidebar({
                 : 'text-text-muted hover:text-text'
             }`}
           >
-            History
+            {th('tab')}
           </button>
           <button
             type="button"
@@ -216,7 +200,7 @@ export default function Sidebar({
                 : 'text-text-muted hover:text-text'
             }`}
           >
-            Statistiken
+            {ts('tab')}
           </button>
         </div>
 
@@ -233,17 +217,15 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile toggle button */}
       <button
         type="button"
         onClick={() => setMobileOpen((prev) => !prev)}
         className="fixed right-4 top-4 z-50 rounded-lg border border-border-fantasy bg-bg-card p-2 text-primary shadow-lg md:hidden"
-        aria-label={mobileOpen ? 'Seitenleiste schließen' : 'Seitenleiste öffnen'}
+        aria-label={mobileOpen ? tSidebar('close') : tSidebar('open')}
       >
         <MenuIcon open={mobileOpen} />
       </button>
 
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
@@ -252,14 +234,13 @@ export default function Sidebar({
         />
       )}
 
-      {/* Sidebar panel */}
       <aside
         className={`
           fantasy-border fixed right-0 top-0 z-40 h-full w-80 bg-bg-card/95 backdrop-blur-md transition-transform duration-300
           md:relative md:translate-x-0 md:bg-bg-card
           ${mobileOpen ? 'translate-x-0' : 'translate-x-full'}
         `}
-        aria-label="Seitenleiste"
+        aria-label={tSidebar('label')}
       >
         {sidebarContent}
       </aside>

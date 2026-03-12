@@ -1,25 +1,11 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { PLAYER_COLORS } from '@/lib/constants';
 
-/** Human-readable names for the player color palette. */
-const COLOR_NAMES: Record<string, string> = {
-  '#E53E3E': 'Rot',
-  '#3182CE': 'Blau',
-  '#38A169': 'Grün',
-  '#D69E2E': 'Gelb',
-  '#805AD5': 'Lila',
-  '#DD6B20': 'Orange',
-  '#319795': 'Türkis',
-  '#D53F8C': 'Pink',
-};
-
 export interface ColorPickerProps {
-  /** Colors that are already taken and cannot be selected. */
   takenColors: string[];
-  /** The currently selected color (hex string) or null if none selected. */
   selectedColor: string | null;
-  /** Called when the user picks an available color. */
   onSelect: (color: string) => void;
 }
 
@@ -28,16 +14,18 @@ export default function ColorPicker({
   selectedColor,
   onSelect,
 }: ColorPickerProps) {
+  const t = useTranslations('colors');
+
   return (
     <div
       role="radiogroup"
-      aria-label="Farbe wählen"
+      aria-label={t('choose')}
       className="grid grid-cols-4 justify-items-center gap-3"
     >
       {PLAYER_COLORS.map((color) => {
         const isTaken = takenColors.includes(color);
         const isSelected = selectedColor === color;
-        const label = COLOR_NAMES[color] ?? color;
+        const label = t(color);
 
         return (
           <button
@@ -47,7 +35,7 @@ export default function ColorPicker({
             aria-checked={isSelected}
             aria-label={label}
             disabled={isTaken}
-            title={isTaken ? `${label} (vergeben)` : label}
+            title={isTaken ? t('taken', { color: label }) : label}
             onClick={() => onSelect(color)}
             className={`
               relative h-10 w-10 rounded-full border-2 transition-all duration-150
@@ -62,7 +50,6 @@ export default function ColorPicker({
             `}
             style={{ backgroundColor: color }}
           >
-            {/* Strikethrough line for taken colors */}
             {isTaken && (
               <span
                 aria-hidden="true"
@@ -72,7 +59,6 @@ export default function ColorPicker({
               </span>
             )}
 
-            {/* Check mark for selected color */}
             {isSelected && (
               <span
                 aria-hidden="true"

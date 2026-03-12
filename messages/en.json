@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "title": "PP Dice - Multiplayer 3D Dice Roller",
+    "description": "Roll dice together with friends in real-time and 3D. RPG dice from D4 to D20 with physics simulation."
+  },
+  "common": {
+    "backToHome": "Back to home",
+    "connecting": "Connecting...",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "copied": "Copied!",
+    "or": "or",
+    "name": "Name"
+  },
+  "home": {
+    "tagline": "Roll dice together with friends\u00a0\u2014 in real-time and 3D",
+    "createRoom": "Create room",
+    "joinRoom": "Join room",
+    "join": "Join",
+    "codePlaceholder": "CODE",
+    "codeError": "The code must be exactly {length} characters long.",
+    "features": "Features",
+    "feature3dTitle": "3D Physics Dice",
+    "feature3dDesc": "Realistic dice physics with cannon-es and Three.js.",
+    "featureMultiplayerTitle": "Real-time Multiplayer",
+    "featureMultiplayerDesc": "Roll simultaneously with up to 8 players via WebSocket.",
+    "featureSetsTitle": "RPG Dice Sets",
+    "featureSetsDesc": "All classic dice from D4 to D20 available.",
+    "featureStatsTitle": "History & Stats",
+    "featureStatsDesc": "Dice history and statistics for every room.",
+    "footer": "PP Dice \u00b7 Multiplayer 3D Dice Roller"
+  },
+  "room": {
+    "createTitle": "Create new room",
+    "roomTitle": "Room: {code}",
+    "joinFailed": "Join failed. Check the room code.",
+    "connectionError": "Connection error. Please try again.",
+    "copyLink": "Copy room link",
+    "hostControls": "Host Controls"
+  },
+  "join": {
+    "title": "Join room",
+    "yourName": "Your name",
+    "namePlaceholder": "Enter adventurer name...",
+    "nameRequired": "Please enter a name.",
+    "nameTaken": "This name is already taken in the room.",
+    "chooseColor": "Choose your color",
+    "colorRequired": "Please choose a color.",
+    "submit": "Join"
+  },
+  "players": {
+    "title": "Players ({count})",
+    "you": "You",
+    "ready": "Ready"
+  },
+  "dice": {
+    "sets": "Dice Sets",
+    "noSets": "No sets created yet.",
+    "readyCount": "{ready}/{total} ready",
+    "roll": "Roll",
+    "locked": "Locked",
+    "readyConfirm": "Ready!",
+    "readyBtn": "Ready",
+    "forceThrow": "Roll anyway ({ready}/{total} ready)",
+    "addDie": "Add die",
+    "removeDie": "Remove die",
+    "diceLabel": "Dice",
+    "setPlaceholder": "e.g. Attack"
+  },
+  "rollMode": {
+    "free": "Free",
+    "sequential": "Sequential",
+    "simultaneous": "Simultaneous",
+    "sameSet": "Same Set",
+    "individual": "Individual"
+  },
+  "history": {
+    "title": "Dice History",
+    "empty": "No rolls yet.",
+    "unknown": "Unknown",
+    "justNow": "just now",
+    "secondsAgo": "{seconds}s ago",
+    "minutesAgo": "{minutes}m ago",
+    "hoursAgo": "{hours}h ago",
+    "tab": "History"
+  },
+  "stats": {
+    "title": "Statistics",
+    "totalThrows": "Total rolls",
+    "throwsPerPlayer": "Rolls per player",
+    "averagePerType": "Average per dice type",
+    "distribution": "{type} distribution",
+    "throwCount": "{count} rolls",
+    "noData": "No data yet.",
+    "tab": "Statistics"
+  },
+  "host": {
+    "title": "Host Controls",
+    "roomAndInvite": "Room & Invite",
+    "copyLink": "Copy link",
+    "statusLabel": "Status:",
+    "statusLocked": "Locked",
+    "statusOpen": "Open",
+    "roomControls": "Room Controls",
+    "unlock": "Unlock",
+    "lock": "Lock",
+    "clearHistory": "Clear history",
+    "clearConfirm": "Are you sure?",
+    "playersSection": "Players",
+    "noOtherPlayers": "No other players in the room.",
+    "kickConfirm": "Really kick?",
+    "kick": "Kick",
+    "editSets": "Edit dice sets",
+    "noSets": "No sets yet.",
+    "createSet": "Create new set",
+    "presetName": "Preset name...",
+    "saveAsPreset": "Save sets as preset",
+    "loadPreset": "Load preset",
+    "deletePreset": "Delete preset",
+    "customPresets": "Custom Presets",
+    "genericPresets": "Generic",
+    "rpgPresets": "RPG Systems",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "copyPrompt": "Copy link:"
+  },
+  "colors": {
+    "#E53E3E": "Red",
+    "#3182CE": "Blue",
+    "#38A169": "Green",
+    "#D69E2E": "Yellow",
+    "#805AD5": "Purple",
+    "#DD6B20": "Orange",
+    "#319795": "Teal",
+    "#D53F8C": "Pink",
+    "choose": "Choose color",
+    "taken": "{color} (taken)"
+  },
+  "theme": {
+    "auto": "System theme (automatic)",
+    "dark": "Dark theme",
+    "light": "Light theme"
+  },
+  "sound": {
+    "enable": "Enable sound",
+    "disable": "Disable sound"
+  },
+  "sidebar": {
+    "close": "Close sidebar",
+    "open": "Open sidebar",
+    "label": "Sidebar"
+  },
+  "language": {
+    "switch": "Change language",
+    "de": "Deutsch",
+    "en": "English"
+  }
+}

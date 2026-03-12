@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "title": "PP Dice - Multiplayer 3D Dice Roller",
+    "description": "Würfle gemeinsam mit Freunden in Echtzeit und 3D. RPG-Würfel von D4 bis D20 mit Physik-Simulation."
+  },
+  "common": {
+    "backToHome": "Zurück zur Startseite",
+    "connecting": "Verbindung wird hergestellt...",
+    "connected": "Verbunden",
+    "disconnected": "Getrennt",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "copied": "Kopiert!",
+    "or": "oder",
+    "name": "Name"
+  },
+  "home": {
+    "tagline": "Würfle gemeinsam mit Freunden\u00a0\u2014 in Echtzeit und 3D",
+    "createRoom": "Raum erstellen",
+    "joinRoom": "Raum beitreten",
+    "join": "Beitreten",
+    "codePlaceholder": "CODE",
+    "codeError": "Der Code muss genau {length} Zeichen lang sein.",
+    "features": "Features",
+    "feature3dTitle": "3D Physik-Würfel",
+    "feature3dDesc": "Realistische Würfel-Physik mit cannon-es und Three.js.",
+    "featureMultiplayerTitle": "Echtzeit Multiplayer",
+    "featureMultiplayerDesc": "Würfle gleichzeitig mit bis zu 8 Spielern via WebSocket.",
+    "featureSetsTitle": "RPG Würfel-Sets",
+    "featureSetsDesc": "Alle klassischen Würfel von D4 bis D20 verfügbar.",
+    "featureStatsTitle": "History & Stats",
+    "featureStatsDesc": "Würfel-Verlauf und Statistiken für jeden Raum.",
+    "footer": "PP Dice \u00b7 Multiplayer 3D Dice Roller"
+  },
+  "room": {
+    "createTitle": "Neuen Raum erstellen",
+    "roomTitle": "Raum: {code}",
+    "joinFailed": "Beitritt fehlgeschlagen. Prüfe den Raum-Code.",
+    "connectionError": "Verbindungsfehler. Bitte versuche es erneut.",
+    "copyLink": "Raum-Link kopieren",
+    "hostControls": "Host-Steuerung"
+  },
+  "join": {
+    "title": "Raum beitreten",
+    "yourName": "Dein Name",
+    "namePlaceholder": "Abenteurername eingeben...",
+    "nameRequired": "Bitte gib einen Namen ein.",
+    "nameTaken": "Dieser Name wird bereits im Raum verwendet.",
+    "chooseColor": "Wähle deine Farbe",
+    "colorRequired": "Bitte wähle eine Farbe.",
+    "submit": "Beitreten"
+  },
+  "players": {
+    "title": "Teilnehmer ({count})",
+    "you": "Du",
+    "ready": "Bereit"
+  },
+  "dice": {
+    "sets": "Würfel-Sets",
+    "noSets": "Noch keine Sets erstellt.",
+    "readyCount": "{ready}/{total} bereit",
+    "roll": "Würfeln",
+    "locked": "Gesperrt",
+    "readyConfirm": "Bereit!",
+    "readyBtn": "Bereit",
+    "forceThrow": "Trotzdem würfeln ({ready}/{total} bereit)",
+    "addDie": "Würfel hinzufügen",
+    "removeDie": "Würfel entfernen",
+    "diceLabel": "Würfel",
+    "setPlaceholder": "z.B. Angriff"
+  },
+  "rollMode": {
+    "free": "Frei",
+    "sequential": "Einzeln",
+    "simultaneous": "Gemeinsam",
+    "sameSet": "Gleiches Set",
+    "individual": "Individuell"
+  },
+  "history": {
+    "title": "Würfel-History",
+    "empty": "Noch keine Würfe.",
+    "unknown": "Unbekannt",
+    "justNow": "gerade eben",
+    "secondsAgo": "vor {seconds} Sek",
+    "minutesAgo": "vor {minutes} Min",
+    "hoursAgo": "vor {hours} Std",
+    "tab": "History"
+  },
+  "stats": {
+    "title": "Statistiken",
+    "totalThrows": "Gesamt-Würfe",
+    "throwsPerPlayer": "Würfe pro Spieler",
+    "averagePerType": "Durchschnitt pro Würfeltyp",
+    "distribution": "{type}-Verteilung",
+    "throwCount": "{count} Würfe",
+    "noData": "Noch keine Daten.",
+    "tab": "Statistiken"
+  },
+  "host": {
+    "title": "Host-Steuerung",
+    "roomAndInvite": "Raum & Einladung",
+    "copyLink": "Link kopieren",
+    "statusLabel": "Status:",
+    "statusLocked": "Gesperrt",
+    "statusOpen": "Offen",
+    "roomControls": "Raum-Steuerung",
+    "unlock": "Entsperren",
+    "lock": "Sperren",
+    "clearHistory": "History löschen",
+    "clearConfirm": "Sicher?",
+    "playersSection": "Spieler",
+    "noOtherPlayers": "Keine weiteren Spieler im Raum.",
+    "kickConfirm": "Wirklich kicken?",
+    "kick": "Kicken",
+    "editSets": "Würfel-Sets bearbeiten",
+    "noSets": "Noch keine Sets vorhanden.",
+    "createSet": "Neues Set erstellen",
+    "presetName": "Preset-Name...",
+    "saveAsPreset": "Sets als Preset speichern",
+    "loadPreset": "Preset laden",
+    "deletePreset": "Preset löschen",
+    "customPresets": "Eigene Presets",
+    "genericPresets": "Generisch",
+    "rpgPresets": "RPG-Systeme",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "copyPrompt": "Link kopieren:"
+  },
+  "colors": {
+    "#E53E3E": "Rot",
+    "#3182CE": "Blau",
+    "#38A169": "Grün",
+    "#D69E2E": "Gelb",
+    "#805AD5": "Lila",
+    "#DD6B20": "Orange",
+    "#319795": "Türkis",
+    "#D53F8C": "Pink",
+    "choose": "Farbe wählen",
+    "taken": "{color} (vergeben)"
+  },
+  "theme": {
+    "auto": "System-Thema (automatisch)",
+    "dark": "Dunkles Thema",
+    "light": "Helles Thema"
+  },
+  "sound": {
+    "enable": "Ton einschalten",
+    "disable": "Ton ausschalten"
+  },
+  "sidebar": {
+    "close": "Seitenleiste schließen",
+    "open": "Seitenleiste öffnen",
+    "label": "Seitenleiste"
+  },
+  "language": {
+    "switch": "Sprache wechseln",
+    "de": "Deutsch",
+    "en": "English"
+  }
+}

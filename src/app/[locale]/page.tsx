@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { ROOM_CODE_LENGTH } from "@/lib/constants";
 
 /* ---------- tiny SVG dice icon ---------- */
@@ -13,7 +14,6 @@ function DiceIcon({ className }: { className?: string }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* body */}
       <rect
         x="10"
         y="10"
@@ -25,7 +25,6 @@ function DiceIcon({ className }: { className?: string }) {
         fill="currentColor"
         fillOpacity={0.1}
       />
-      {/* pips – showing a 5-face */}
       <circle cx="30" cy="30" r="6" fill="currentColor" />
       <circle cx="70" cy="30" r="6" fill="currentColor" />
       <circle cx="50" cy="50" r="6" fill="currentColor" />
@@ -35,35 +34,20 @@ function DiceIcon({ className }: { className?: string }) {
   );
 }
 
-/* ---------- feature data ---------- */
-const features = [
-  {
-    title: "3D Physik-Würfel",
-    description: "Realistische Würfel-Physik mit cannon-es und Three.js.",
-    icon: "\u2B22", // hexagon
-  },
-  {
-    title: "Echtzeit Multiplayer",
-    description: "Würfle gleichzeitig mit bis zu 8 Spielern via WebSocket.",
-    icon: "\u26A1",
-  },
-  {
-    title: "RPG Würfel-Sets",
-    description: "Alle klassischen Würfel von D4 bis D20 verfügbar.",
-    icon: "\u2B20", // pentagon
-  },
-  {
-    title: "History & Stats",
-    description: "Würfel-Verlauf und Statistiken für jeden Raum.",
-    icon: "\u2630", // trigram
-  },
-];
-
 /* ---------- page ---------- */
 export default function Home() {
+  const t = useTranslations('home');
+  const tc = useTranslations('common');
   const router = useRouter();
   const [roomCode, setRoomCode] = useState("");
   const [error, setError] = useState("");
+
+  const features = [
+    { title: t('feature3dTitle'), description: t('feature3dDesc'), icon: "\u2B22" },
+    { title: t('featureMultiplayerTitle'), description: t('featureMultiplayerDesc'), icon: "\u26A1" },
+    { title: t('featureSetsTitle'), description: t('featureSetsDesc'), icon: "\u2B20" },
+    { title: t('featureStatsTitle'), description: t('featureStatsDesc'), icon: "\u2630" },
+  ];
 
   function handleCodeChange(value: string) {
     const cleaned = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
@@ -75,7 +59,7 @@ export default function Home() {
 
   function handleJoin() {
     if (roomCode.length !== ROOM_CODE_LENGTH) {
-      setError(`Der Code muss genau ${ROOM_CODE_LENGTH} Zeichen lang sein.`);
+      setError(t('codeError', { length: ROOM_CODE_LENGTH }));
       return;
     }
     router.push(`/room/${roomCode}`);
@@ -98,13 +82,12 @@ export default function Home() {
         </h1>
 
         <p className="text-lg sm:text-xl text-text-muted max-w-lg leading-relaxed">
-          Würfle gemeinsam mit Freunden&nbsp;&mdash; in Echtzeit und 3D
+          {t('tagline')}
         </p>
       </section>
 
       {/* -------- ACTIONS -------- */}
       <section className="w-full max-w-md flex flex-col gap-6 mb-20">
-        {/* Create room */}
         <button
           onClick={handleCreate}
           className="w-full py-4 rounded-xl font-heading text-lg font-semibold tracking-wide
@@ -112,32 +95,30 @@ export default function Home() {
                      glow-amber transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
                      cursor-pointer"
         >
-          Raum erstellen
+          {t('createRoom')}
         </button>
 
-        {/* Divider */}
         <div className="flex items-center gap-4">
           <span className="flex-1 h-px bg-surface" />
           <span className="text-text-muted text-sm font-heading tracking-widest uppercase">
-            oder
+            {tc('or')}
           </span>
           <span className="flex-1 h-px bg-surface" />
         </div>
 
-        {/* Join room */}
         <div className="flex flex-col gap-3">
           <label
             htmlFor="room-code"
             className="font-heading text-sm text-text-muted tracking-wider uppercase"
           >
-            Raum beitreten
+            {t('joinRoom')}
           </label>
 
           <div className="flex gap-3">
             <input
               id="room-code"
               type="text"
-              placeholder="CODE"
+              placeholder={t('codePlaceholder')}
               value={roomCode}
               onChange={(e) => handleCodeChange(e.target.value)}
               onKeyDown={(e) => {
@@ -159,7 +140,7 @@ export default function Home() {
                          disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-light disabled:hover:text-primary
                          transition-all duration-200 cursor-pointer"
             >
-              Beitreten
+              {t('join')}
             </button>
           </div>
 
@@ -172,7 +153,7 @@ export default function Home() {
       {/* -------- FEATURES -------- */}
       <section className="w-full max-w-4xl">
         <h2 className="font-heading text-2xl font-semibold text-center mb-8 text-primary-light tracking-wide">
-          Features
+          {t('features')}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -196,7 +177,7 @@ export default function Home() {
 
       {/* -------- FOOTER -------- */}
       <footer className="mt-20 text-text-muted text-xs text-center font-heading tracking-wider">
-        PP Dice &middot; Multiplayer 3D Dice Roller
+        {t('footer')}
       </footer>
     </main>
   );
