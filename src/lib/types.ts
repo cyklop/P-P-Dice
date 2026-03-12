@@ -93,10 +93,11 @@ export interface ServerToClientEvents {
   'roll-mode:changed': (data: { rollMode: RollMode; simultaneousSubMode: SimultaneousSubMode }) => void;
   'throw:locked': (playerId: string | null) => void;
   'ready:update': (data: { readyPlayers: string[]; readyPlayerSets: Record<string, string>; simultaneousSetId: string | null }) => void;
+  'history:cleared': () => void;
 }
 
 export interface ClientToServerEvents {
-  'room:create': (data: { name: string; color: string }, callback: (data: { code: string; reconnectToken: string }) => void) => void;
+  'room:create': (data: { name: string; color: string; requestedCode?: string }, callback: (data: { code: string; reconnectToken: string }) => void) => void;
   'room:info': (
     data: { code: string },
     callback: (info: { exists: boolean; takenColors: string[]; playerNames: string[] } | null) => void

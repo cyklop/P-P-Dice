@@ -39,7 +39,7 @@ export interface UseSocketReturn {
   roomState: Room | null;
   /** ID of the current player (assigned after joining). */
   playerId: string | null;
-  createRoom: (name: string, color: string) => Promise<string>;
+  createRoom: (name: string, color: string, requestedCode?: string) => Promise<string>;
   fetchRoomInfo: (code: string) => Promise<{ exists: boolean; takenColors: string[]; playerNames: string[] } | null>;
   joinRoom: (code: string, name: string, color: string) => Promise<boolean>;
   throwDice: (setId: string) => void;
@@ -289,11 +289,12 @@ export function useSocket(): UseSocketReturn {
         }
         return next;
       });
-      // If empty data, also clear history (it's a clear command)
-      if (data.length === 0) {
-        setDiceHistory([]);
-        setLastResult(null);
-      }
+    });
+
+    // -- History cleared by host ------------------------------------------
+    socket.on('history:cleared', () => {
+      setDiceHistory([]);
+      setLastResult(null);
     });
 
     // -- Roll mode events ------------------------------------------------
@@ -392,14 +393,14 @@ export function useSocket(): UseSocketReturn {
   // Actions
   // -----------------------------------------------------------------------
 
-  const createRoom = useCallback((name: string, color: string): Promise<string> => {
+  const createRoom = useCallback((name: string, color: string, requestedCode?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const socket = socketRef.current;
       if (!socket) {
         reject(new Error('Not connected'));
         return;
       }
-      socket.emit('room:create', { name, color }, (data) => {
+      socket.emit('room:create', { name, color, requestedCode }, (data) => {
         // The creator is automatically a player in the room
         if (socket.id) {
           setPlayerId(socket.id);

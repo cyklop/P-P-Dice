@@ -355,8 +355,8 @@ export function createSocketHandler(
     // ── room:create ──────────────────────────────────────────────────────
 
     socket.on('room:create', (data, callback) => {
-      const { name, color } = data;
-      const { room, reconnectToken } = rm.createRoom(socket.id, name, color);
+      const { name, color, requestedCode } = data;
+      const { room, reconnectToken } = rm.createRoom(socket.id, name, color, requestedCode);
       socket.join(room.code);
       socketMap.set(socket.id, {
         roomCode: room.code,
@@ -593,8 +593,9 @@ export function createSocketHandler(
       // Clear all resting dice
       rm.clearRestingDice(mapping.roomCode);
 
-      // Broadcast to all clients to clear their dice state
+      // Broadcast to all clients to clear their dice and history state
       io.to(mapping.roomCode).emit('dice:existing', []);
+      io.to(mapping.roomCode).emit('history:cleared');
     });
 
     // ── sets:update ──────────────────────────────────────────────────────

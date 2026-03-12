@@ -70,11 +70,17 @@ export class RoomManager {
   createRoom(
     hostId: string,
     name: string,
-    color: string
+    color: string,
+    requestedCode?: string,
   ): { room: Room; reconnectToken: string } {
-    let code = generateRoomCode();
-    while (this.states.has(code)) {
+    let code: string;
+    if (requestedCode && !this.states.has(requestedCode)) {
+      code = requestedCode;
+    } else {
       code = generateRoomCode();
+      while (this.states.has(code)) {
+        code = generateRoomCode();
+      }
     }
 
     const host: Player = {

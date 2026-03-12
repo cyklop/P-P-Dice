@@ -208,7 +208,7 @@ export default function RoomPage({ params }: RoomPageProps) {
   // ---------------------------------------------------------------------------
 
   if (!hasJoined) {
-    // Room does not exist — show error with options
+    // Room does not exist — show error with option to create with same code
     if (roomNotFound && !isCreating) {
       return (
         <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-6">
@@ -220,26 +220,44 @@ export default function RoomPage({ params }: RoomPageProps) {
             {t('roomNotFound', { code: upperCode })}
           </p>
 
-          <div className="flex gap-4">
-            <Link
-              href="/room/new"
-              className="px-6 py-2 rounded-xl font-heading text-sm tracking-wide
-                         border-2 border-primary text-primary
-                         hover:bg-primary/10
-                         transition-colors duration-200"
-            >
-              {t('createNewRoom')}
-            </Link>
-            <Link
-              href="/"
-              className="px-6 py-2 rounded-xl font-heading text-sm tracking-wide
-                         border-2 border-surface text-text-muted
-                         hover:border-primary hover:text-primary
-                         transition-colors duration-200"
-            >
-              {tc('backToHome')}
-            </Link>
-          </div>
+          <p className="text-text-muted text-sm">
+            {t('createWithCode', { code: upperCode })}
+          </p>
+
+          <JoinDialog
+            takenColors={[]}
+            existingNames={[]}
+            onJoin={async (name, color) => {
+              setJoinError(null);
+              try {
+                const newCode = await createRoom(name, color, upperCode);
+                roomCodeRef.current = newCode;
+                setRoomCode(newCode);
+                hasJoinedRef.current = true;
+                setHasJoined(true);
+                if (newCode !== upperCode) {
+                  window.history.replaceState(window.history.state, '', `/${locale}/room/${newCode}`);
+                }
+              } catch {
+                setJoinError(t('connectionError'));
+              }
+            }}
+            isOpen={connected}
+          />
+
+          {joinError && (
+            <p className="text-red-400 text-sm">{joinError}</p>
+          )}
+
+          <Link
+            href="/"
+            className="mt-4 px-6 py-2 rounded-xl font-heading text-sm tracking-wide
+                       border-2 border-surface text-text-muted
+                       hover:border-primary hover:text-primary
+                       transition-colors duration-200"
+          >
+            {tc('backToHome')}
+          </Link>
         </main>
       );
     }
