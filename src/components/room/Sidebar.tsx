@@ -75,7 +75,7 @@ export default function Sidebar({
   const isPlayerReady = readyPlayers.includes(currentPlayerId);
 
   const sidebarContent = (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto p-4 pt-14">
+    <div className="flex h-full flex-col gap-4 overflow-hidden p-4 pt-14">
       {/* Roll Mode Toggle */}
       <section>
         <div className="flex items-center gap-2">

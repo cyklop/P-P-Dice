@@ -64,14 +64,14 @@ export default function HistoryLog({ history, players }: HistoryLogProps) {
   const sorted = [...history].sort((a, b) => b.timestamp - a.timestamp);
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <h3 className="mb-2 font-heading text-sm font-semibold uppercase tracking-wider text-primary">
         {t('title')}
       </h3>
 
       <div
         ref={scrollRef}
-        className="max-h-64 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin"
+        className="space-y-1.5 overflow-y-auto pr-1 scrollbar-thin"
         role="log"
         aria-live="polite"
       >
