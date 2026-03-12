@@ -1,5 +1,4 @@
 import { createServer } from 'http';
-import { parse } from 'url';
 import next from 'next';
 import { Server as SocketIOServer } from 'socket.io';
 import type {
@@ -23,8 +22,7 @@ export async function initializeServer() {
   await app.prepare();
 
   const httpServer = createServer((req, res) => {
-    const parsedUrl = parse(req.url!, true);
-    handle(req, res, parsedUrl);
+    handle(req, res);
   });
 
   const io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(
