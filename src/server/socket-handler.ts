@@ -4,7 +4,6 @@ import type {
   ClientToServerEvents,
   DiceResult,
   DiceType,
-  PlayerRestingDice,
   PhysicsFrame,
 } from '@/lib/types';
 import { DICE_SIDES } from '@/lib/constants';
@@ -28,7 +27,113 @@ function rollDie(type: DiceType): number {
   return Math.floor(Math.random() * sides) + 1;
 }
 
-// ── Throw execution helpers ─────────────────────────────────────────────────
+// ── Shared throw helpers ─────────────────────────────────────────────────────
+
+/** Expand a dice set into individual { type, id } entries. */
+function expandDiceSet(
+  playerId: string,
+  setId: string,
+  dice: { type: DiceType; count: number }[],
+): { type: DiceType; id: string }[] {
+  const result: { type: DiceType; id: string }[] = [];
+  let dieIndex = 0;
+  for (const die of dice) {
+    for (let i = 0; i < die.count; i++) {
+      result.push({
+        type: die.type,
+        id: `${playerId}-${setId}-${die.type}-${dieIndex++}`,
+      });
+    }
+  }
+  return result;
+}
+
+/** Build a DiceResult from physics simulation output. */
+function buildDiceResult(
+  playerId: string,
+  setId: string,
+  physicsResults: { diceId: string; type: DiceType; value: number }[],
+  lastFrame: PhysicsFrame[] | undefined,
+): DiceResult {
+  const results = physicsResults.map((r) => {
+    const finalPose = lastFrame?.find((f) => f.diceId === r.diceId);
+    return {
+      type: r.type,
+      value: r.value,
+      finalPosition: finalPose?.position,
+      finalRotation: finalPose?.rotation,
+    };
+  });
+
+  return {
+    playerId,
+    setId,
+    results,
+    timestamp: Date.now(),
+  };
+}
+
+/** Store resting dice state after a successful throw. */
+function storeRestingDice(
+  rm: RoomManager,
+  roomCode: string,
+  playerId: string,
+  diceTypes: { id: string; type: DiceType }[],
+  physicsResults: { diceId: string; value: number }[],
+  lastFrame: PhysicsFrame[] | undefined,
+  filterIds?: Set<string>,
+): void {
+  const resultValues: Record<string, number> = {};
+  for (const r of physicsResults) {
+    if (!filterIds || filterIds.has(r.diceId)) {
+      resultValues[r.diceId] = r.value;
+    }
+  }
+  const finalFrames = filterIds
+    ? lastFrame?.filter(f => filterIds.has(f.diceId)) ?? []
+    : lastFrame ?? [];
+  rm.setRestingDice(roomCode, {
+    playerId,
+    diceTypes,
+    finalFrame: finalFrames,
+    resultValues,
+  });
+}
+
+/** Build a fallback DiceResult using random values (when physics fails). */
+function buildFallbackResult(
+  playerId: string,
+  setId: string,
+  dice: { type: DiceType; count: number }[],
+): DiceResult {
+  const results: { type: DiceType; value: number }[] = [];
+  for (const die of dice) {
+    for (let i = 0; i < die.count; i++) {
+      results.push({ type: die.type, value: rollDie(die.type) });
+    }
+  }
+  return {
+    playerId,
+    setId,
+    results,
+    timestamp: Date.now(),
+  };
+}
+
+/** Unlock throw lock in sequential mode. */
+function unlockSequentialThrow(
+  io: TypedIO,
+  rm: RoomManager,
+  roomCode: string,
+): void {
+  const room = rm.getRoom(roomCode);
+  if (room?.rollMode === 'sequential') {
+    rm.setThrowInProgress(roomCode, null);
+    io.to(roomCode).emit('throw:locked', null);
+  }
+}
+
+// ── Throw execution ──────────────────────────────────────────────────────────
 
 function executeSingleThrow(
   io: TypedIO,
@@ -38,16 +143,7 @@ function executeSingleThrow(
   set: { dice: { type: DiceType; count: number }[] },
   setId: string,
 ): void {
-  const diceToThrow: { type: DiceType; id: string }[] = [];
-  let dieIndex = 0;
-  for (const die of set.dice) {
-    for (let i = 0; i < die.count; i++) {
-      diceToThrow.push({
-        type: die.type,
-        id: `${playerId}-${setId}-${die.type}-${dieIndex++}`,
-      });
-    }
-  }
+  const diceToThrow = expandDiceSet(playerId, setId, set.dice);
 
   // In sequential mode, clear all other players' dice from the tray
   const room = rm.getRoom(roomCode);
@@ -85,72 +181,23 @@ function executeSingleThrow(
       });
 
       const lastFrame = frames[frames.length - 1];
-      const results = physicsResults.map((r) => {
-        const finalPose = lastFrame?.find((f) => f.diceId === r.diceId);
-        return {
-          type: r.type,
-          value: r.value,
-          finalPosition: finalPose?.position,
-          finalRotation: finalPose?.rotation,
-        };
-      });
-
-      const diceResult: DiceResult = {
-        playerId,
-        setId,
-        results,
-        timestamp: Date.now(),
-      };
-
+      const diceResult = buildDiceResult(playerId, setId, physicsResults, lastFrame);
       rm.addDiceResult(roomCode, diceResult);
 
-      const resultValues: Record<string, number> = {};
-      for (const r of physicsResults) {
-        resultValues[r.diceId] = r.value;
-      }
-      rm.setRestingDice(roomCode, {
-        playerId,
-        diceTypes: diceToThrow.map(d => ({ id: d.id, type: d.type })),
-        finalFrame: lastFrame,
-        resultValues,
-      });
+      storeRestingDice(rm, roomCode, playerId, diceToThrow, physicsResults, lastFrame);
 
       const animationDurationMs = (frames.length / 60) * 1000;
       setTimeout(() => {
         io.to(roomCode).emit('dice:result', diceResult);
-        // Unlock throw in sequential mode
-        const room = rm.getRoom(roomCode);
-        if (room?.rollMode === 'sequential') {
-          rm.setThrowInProgress(roomCode, null);
-          io.to(roomCode).emit('throw:locked', null);
-        }
+        unlockSequentialThrow(io, rm, roomCode);
       }, animationDurationMs);
     })
     .catch((err) => {
       console.error('Physics simulation failed, falling back to random:', err);
-      const results: { type: DiceType; value: number }[] = [];
-      for (const die of set.dice) {
-        for (let i = 0; i < die.count; i++) {
-          results.push({ type: die.type, value: rollDie(die.type) });
-        }
-      }
-
-      const diceResult: DiceResult = {
-        playerId,
-        setId,
-        results,
-        timestamp: Date.now(),
-      };
-
+      const diceResult = buildFallbackResult(playerId, setId, set.dice);
       rm.addDiceResult(roomCode, diceResult);
       io.to(roomCode).emit('dice:result', diceResult);
-
-      // Unlock throw in sequential mode
-      const room = rm.getRoom(roomCode);
-      if (room?.rollMode === 'sequential') {
-        rm.setThrowInProgress(roomCode, null);
-        io.to(roomCode).emit('throw:locked', null);
-      }
+      unlockSequentialThrow(io, rm, roomCode);
     });
 }
 
@@ -191,21 +238,22 @@ function executeSimultaneousThrow(
   const playerDiceMap: { playerId: string; diceTypes: { id: string; type: DiceType }[] }[] = [];
 
   for (const pt of playerThrows) {
-    const playerDice: { id: string; type: DiceType }[] = [];
-    let dieIndex = 0;
-    for (const die of pt.dice) {
-      for (let i = 0; i < die.count; i++) {
-        const id = `${pt.playerId}-${pt.setId}-${die.type}-${dieIndex++}`;
-        allDice.push({ type: die.type, id });
-        playerDice.push({ id, type: die.type });
-      }
-    }
+    const playerDice = expandDiceSet(pt.playerId, pt.setId, pt.dice);
+    allDice.push(...playerDice);
     playerDiceMap.push({ playerId: pt.playerId, diceTypes: playerDice });
   }
 
   // Clear ALL resting dice and notify clients (simultaneous = fresh tray)
   rm.clearRestingDice(roomCode);
   io.to(roomCode).emit('dice:existing', []);
+
+  const clearReadyState = () => {
+    io.to(roomCode).emit('ready:update', {
+      readyPlayers: [],
+      readyPlayerSets: {},
+      simultaneousSetId: null,
+    });
+  };
 
   // Run combined physics simulation (no existing obstacles — all dice thrown fresh)
   throwDice(allDice, [])
@@ -226,78 +274,27 @@ function executeSimultaneousThrow(
           if (!playerDice) continue;
 
           const playerDiceIds = new Set(playerDice.diceTypes.map(d => d.id));
-          const playerResults = physicsResults
-            .filter(r => playerDiceIds.has(r.diceId))
-            .map(r => {
-              const finalPose = lastFrame?.find(f => f.diceId === r.diceId);
-              return {
-                type: r.type,
-                value: r.value,
-                finalPosition: finalPose?.position,
-                finalRotation: finalPose?.rotation,
-              };
-            });
-
-          const diceResult: DiceResult = {
-            playerId: pt.playerId,
-            setId: pt.setId,
-            results: playerResults,
-            timestamp: Date.now(),
-          };
+          const playerPhysicsResults = physicsResults.filter(r => playerDiceIds.has(r.diceId));
+          const diceResult = buildDiceResult(pt.playerId, pt.setId, playerPhysicsResults, lastFrame);
 
           rm.addDiceResult(roomCode, diceResult);
           io.to(roomCode).emit('dice:result', diceResult);
 
-          // Store resting dice
-          const resultValues: Record<string, number> = {};
-          for (const r of physicsResults) {
-            if (playerDiceIds.has(r.diceId)) {
-              resultValues[r.diceId] = r.value;
-            }
-          }
-          const finalFrames = lastFrame?.filter(f => playerDiceIds.has(f.diceId)) ?? [];
-          rm.setRestingDice(roomCode, {
-            playerId: pt.playerId,
-            diceTypes: playerDice.diceTypes,
-            finalFrame: finalFrames,
-            resultValues,
-          });
+          // physicsResults contains all players' results; filterIds narrows to this player
+          storeRestingDice(rm, roomCode, pt.playerId, playerDice.diceTypes, physicsResults, lastFrame, playerDiceIds);
         }
 
-        // Clear ready state
-        io.to(roomCode).emit('ready:update', {
-          readyPlayers: [],
-          readyPlayerSets: {},
-          simultaneousSetId: null,
-        });
+        clearReadyState();
       }, animationDurationMs);
     })
     .catch((err) => {
       console.error('Simultaneous physics failed, falling back to random:', err);
       for (const pt of playerThrows) {
-        const results: { type: DiceType; value: number }[] = [];
-        for (const die of pt.dice) {
-          for (let i = 0; i < die.count; i++) {
-            results.push({ type: die.type, value: rollDie(die.type) });
-          }
-        }
-
-        const diceResult: DiceResult = {
-          playerId: pt.playerId,
-          setId: pt.setId,
-          results,
-          timestamp: Date.now(),
-        };
-
+        const diceResult = buildFallbackResult(pt.playerId, pt.setId, pt.dice);
         rm.addDiceResult(roomCode, diceResult);
         io.to(roomCode).emit('dice:result', diceResult);
       }
-
-      io.to(roomCode).emit('ready:update', {
-        readyPlayers: [],
-        readyPlayerSets: {},
-        simultaneousSetId: null,
-      });
+      clearReadyState();
     });
 }
 
@@ -654,13 +651,4 @@ export function createSocketHandler(
       return null;
     }
   });
-}
-
-// ── Legacy export for backward compatibility ────────────────────────────────
-
-/**
- * Sets up Socket.io event handlers using the default room manager singleton.
- */
-export function setupSocketHandlers(io: TypedIO): void {
-  createSocketHandler(io);
 }

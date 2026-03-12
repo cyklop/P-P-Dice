@@ -14,6 +14,9 @@ A real-time multiplayer 3D dice roller for tabletop RPG sessions. Roll dice toge
 - **Dark/Light Theme** - Adaptive 3D lighting and tray colors per theme.
 - **Sound Effects** - Real dice rolling sounds with mute toggle.
 - **Host Controls** - Room locking, player management, dice set configuration.
+- **Roll Modes** - Free roll, sequential (one at a time), and simultaneous (all players roll together).
+- **Internationalization** - Full English and German UI via next-intl.
+- **Auto-Reconnect** - Players automatically rejoin their room after connection loss.
 
 <details>
 <summary>More Screenshots</summary>
@@ -38,6 +41,7 @@ A real-time multiplayer 3D dice roller for tabletop RPG sessions. Roll dice toge
 | 3D Rendering | [Three.js](https://threejs.org/), [@react-three/fiber](https://docs.pmnd.rs/react-three-fiber), [@react-three/drei](https://github.com/pmndrs/drei) |
 | Physics | [cannon-es](https://pmndrs.github.io/cannon-es/) (server-side simulation) |
 | Real-Time | [Socket.IO](https://socket.io/) |
+| i18n | [next-intl](https://next-intl.dev/) (EN/DE) |
 | Language | TypeScript 5.7 |
 | Testing | Vitest, Playwright |
 
@@ -102,16 +106,19 @@ Physics runs entirely on the server to prevent manipulation. The server sends pr
 
 ```
 src/
-├── app/                    # Next.js App Router pages
+├── app/[locale]/           # Next.js App Router pages (i18n)
 │   ├── page.tsx           # Landing page
 │   └── room/[code]/       # Dynamic room route
 ├── components/
-│   ├── 3d/                # Three.js scene, dice, tray
+│   ├── 3d/                # Three.js scene, dice geometries, tray
 │   ├── room/              # Room UI (sidebar, host panel, history)
-│   └── ui/                # Shared UI (sound/theme toggles)
+│   └── ui/                # Shared UI (sound/theme/language toggles)
 ├── hooks/                 # React hooks (socket, sound, physics, theme)
+├── i18n/                  # Internationalization config & routing
 ├── lib/                   # Types, constants, geometry data, presets
 └── server/                # Physics engine, room management, socket handlers
+messages/                   # Translation files (en.json, de.json)
+server.ts                   # Custom server entry (Next.js + Socket.IO)
 ```
 
 ## License

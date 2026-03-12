@@ -5,7 +5,7 @@ import type {
   ServerToClientEvents,
   ClientToServerEvents,
 } from './src/lib/types';
-import { setupSocketHandlers } from './src/server/socket-handler';
+import { createSocketHandler } from './src/server/socket-handler';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = '0.0.0.0';
@@ -34,7 +34,7 @@ export async function initializeServer() {
     }
   );
 
-  setupSocketHandlers(io);
+  createSocketHandler(io);
 
   return { httpServer, io };
 }

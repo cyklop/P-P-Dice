@@ -61,6 +61,20 @@ function createMockIO() {
   return mockIO;
 }
 
+/** Helper: create a room via socket and return the room code. */
+function createRoomViaSocket(
+  io: ReturnType<typeof createMockIO>,
+  socket: ReturnType<typeof createMockSocket>,
+  name = 'Host',
+  color = '#E53E3E',
+): string {
+  let roomCode = '';
+  socket._trigger('room:create', { name, color }, (result: { code: string; reconnectToken: string }) => {
+    roomCode = result.code;
+  });
+  return roomCode;
+}
+
 // ── Import handler after mocks defined ──────────────────────────────────────
 
 import { createSocketHandler } from '../socket-handler';
@@ -89,17 +103,19 @@ describe('Socket Handler', () => {
     socket._trigger('room:create', { name: 'Host', color: '#E53E3E' }, callback);
 
     expect(callback).toHaveBeenCalledTimes(1);
-    const code = callback.mock.calls[0][0];
-    expect(code).toMatch(/^[A-Z0-9]{6}$/);
+    const result = callback.mock.calls[0][0];
+    expect(result).toHaveProperty('code');
+    expect(result).toHaveProperty('reconnectToken');
+    expect(result.code).toMatch(/^[A-Z0-9]{6}$/);
 
     // Room exists in room manager with host
-    const room = rm.getRoom(code);
+    const room = rm.getRoom(result.code);
     expect(room).toBeTruthy();
     expect(room!.hostId).toBe('host-socket-1');
     expect(room!.players[0].isHost).toBe(true);
 
     // Socket joined the Socket.io room
-    expect(socket.join).toHaveBeenCalledWith(code);
+    expect(socket.join).toHaveBeenCalledWith(result.code);
   });
 
   it('room:join validates and broadcasts player:joined, sends room:state', () => {
@@ -109,8 +125,7 @@ describe('Socket Handler', () => {
     // Host creates room
     const hostSocket = createMockSocket('host-1');
     io._simulateConnection(hostSocket);
-    let roomCode = '';
-    hostSocket._trigger('room:create', { name: 'Host', color: '#E53E3E' }, (code: string) => { roomCode = code; });
+    const roomCode = createRoomViaSocket(io, hostSocket);
 
     // Joiner connects
     const joinSocket = createMockSocket('joiner-1');
@@ -128,7 +143,9 @@ describe('Socket Handler', () => {
     }, joinCallback);
 
     // Callback called with success
-    expect(joinCallback).toHaveBeenCalledWith(true);
+    expect(joinCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, reconnectToken: expect.any(String) }),
+    );
 
     // Joiner receives room:state
     expect(joinSocket.emit).toHaveBeenCalledWith(
@@ -152,7 +169,9 @@ describe('Socket Handler', () => {
       name: 'Carol',
       color: PLAYER_COLORS[2],
     }, failCallback);
-    expect(failCallback).toHaveBeenCalledWith(false, 'Room not found');
+    expect(failCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ success: false, error: 'Room not found' }),
+    );
   });
 
   it('room:lock and room:kick only work for the host', () => {
@@ -161,8 +180,7 @@ describe('Socket Handler', () => {
 
     const hostSocket = createMockSocket('host-1');
     io._simulateConnection(hostSocket);
-    let roomCode = '';
-    hostSocket._trigger('room:create', { name: 'Host', color: '#E53E3E' }, (code: string) => { roomCode = code; });
+    const roomCode = createRoomViaSocket(io, hostSocket);
 
     const joinerSocket = createMockSocket('joiner-1');
     io._simulateConnection(joinerSocket);
@@ -195,21 +213,28 @@ describe('Socket Handler', () => {
 
     const hostSocket = createMockSocket('host-1');
     io._simulateConnection(hostSocket);
-    let roomCode = '';
-    hostSocket._trigger('room:create', { name: 'Host', color: '#E53E3E' }, (code: string) => { roomCode = code; });
+    const roomCode = createRoomViaSocket(io, hostSocket);
 
-    // Create a dice set
-    const set = rm.createDiceSet(roomCode, 'host-1', 'Attack', [
-      { type: 'D6', count: 2 },
-      { type: 'D20', count: 1 },
-    ]);
+    // Add a dice set to the room
+    const room = rm.getRoom(roomCode)!;
+    const setId = room.sets[0]?.id;
+    // Update the default set to have our dice
+    room.sets = [{
+      id: setId || 'test-set',
+      name: 'Attack',
+      dice: [
+        { type: 'D6', count: 2 },
+        { type: 'D20', count: 1 },
+      ],
+    }];
+    const testSetId = room.sets[0].id;
 
     // Track room broadcasts
     const roomEmit = vi.fn();
     io.to.mockReturnValue({ emit: roomEmit });
 
     hostSocket._trigger('dice:throw', {
-      setId: set!.id,
+      setId: testSetId,
       gesture: { direction: { x: 0, y: 0, z: 1 }, force: 1 },
     });
 
@@ -219,7 +244,7 @@ describe('Socket Handler', () => {
         'dice:result',
         expect.objectContaining({
           playerId: 'host-1',
-          setId: set!.id,
+          setId: testSetId,
         }),
       );
     }, { timeout: 15000 });
@@ -255,8 +280,7 @@ describe('Socket Handler', () => {
 
     const hostSocket = createMockSocket('host-1');
     io._simulateConnection(hostSocket);
-    let roomCode = '';
-    hostSocket._trigger('room:create', { name: 'Host', color: '#E53E3E' }, (code: string) => { roomCode = code; });
+    const roomCode = createRoomViaSocket(io, hostSocket);
 
     const joinerSocket = createMockSocket('joiner-1');
     io._simulateConnection(joinerSocket);

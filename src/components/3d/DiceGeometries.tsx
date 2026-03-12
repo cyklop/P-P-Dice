@@ -49,44 +49,6 @@ function formatDiceLabel(num: number | string): string {
   return s;
 }
 
-function createNumberTexture(
-  num: number | string,
-  fg: string = '#ffffff',
-  bg: string = '#00000000',
-  size: number = 256,
-): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, size, size);
-
-  ctx.fillStyle = fg;
-  ctx.font = `bold ${size * 0.55}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(formatDiceLabel(num), size / 2, size / 2);
-
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.needsUpdate = true;
-  return tex;
-}
-
-function createFaceMaterials(
-  numbers: (number | string)[],
-  baseColor: string,
-): THREE.MeshStandardMaterial[] {
-  return numbers.map((n) => {
-    const tex = createNumberTexture(n);
-    return new THREE.MeshStandardMaterial({
-      ...diceMaterial(baseColor),
-      map: tex,
-    });
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Build visual geometry from shared dice-geometry-data
 // ---------------------------------------------------------------------------
@@ -317,210 +279,47 @@ function useDicePlayback(
   });
 }
 
-
 // ---------------------------------------------------------------------------
-// D4 - Tetrahedron
+// Dice configuration type & generic component
 // ---------------------------------------------------------------------------
 
-export function D4Geometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
-
-  useDicePlayback(meshRef, diceId, playbackRef);
-
-  const { geometry, faceCenters, faceNormals } = useMemo(
-    () => buildGeometryFromData(getD4Data(), 0.6),
-    [],
-  );
-
-  const labels = [1, 2, 3, 4];
-
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        return (
-          <Text
-            key={num}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.28}
-            color={resultValue === num ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={resultValue === num ? 0.025 : 0.015}
-            outlineColor={resultValue === num ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {formatDiceLabel(num)}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
+interface DiceConfig {
+  getData: () => DiceGeometryData;
+  scale: number;
+  labels: (number | string)[];
+  fontSize: number;
+  outlineWidth: number;
+  highlightOutlineWidth: number;
+  groupKites?: boolean;
+  isHighlighted?: (resultValue: number | null | undefined, label: number | string) => boolean;
+  formatLabel?: (label: number | string) => string;
 }
 
-// ---------------------------------------------------------------------------
-// D6 - Cube (built from shared geometry data, same pipeline as other dice)
-// ---------------------------------------------------------------------------
+const defaultIsHighlighted = (resultValue: number | null | undefined, label: number | string) =>
+  resultValue === label;
 
-// Face order matches getD6Data(): [+X(1), -X(6), +Y(2), -Y(5), +Z(3), -Z(4)]
-const D6_LABELS = [1, 6, 2, 5, 3, 4];
-
-export function D6Geometry({
+function GenericDiceGeometry({
   color,
   position,
   rotation,
   diceId,
   playbackRef,
   resultValue,
-}: DiceGeometryProps) {
+  config,
+}: DiceGeometryProps & { config: DiceConfig }) {
   const meshRef = useRef<THREE.Mesh>(null);
 
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
+  const {
+    getData, scale, labels, fontSize,
+    outlineWidth, highlightOutlineWidth, groupKites,
+  } = config;
+  const isHighlighted = config.isHighlighted ?? defaultIsHighlighted;
+  const formatLabelFn = config.formatLabel ?? formatDiceLabel;
 
-  useDicePlayback(meshRef, diceId, playbackRef);
-
-  const { geometry, faceCenters, faceNormals } = useMemo(
-    () => buildGeometryFromData(getD6Data(), 0.4),
-    [],
-  );
-
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {D6_LABELS.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        return (
-          <Text
-            key={num}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.38}
-            color={resultValue === num ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={resultValue === num ? 0.03 : 0.018}
-            outlineColor={resultValue === num ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {formatDiceLabel(num)}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// D8 - Octahedron
-// ---------------------------------------------------------------------------
-
-export function D8Geometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
-
-  useDicePlayback(meshRef, diceId, playbackRef);
-
-  const { geometry, faceCenters, faceNormals } = useMemo(
-    () => buildGeometryFromData(getD8Data(), 0.6),
-    [],
-  );
-
-  const labels = [1, 2, 3, 4, 5, 6, 7, 8];
-
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        return (
-          <Text
-            key={num}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.24}
-            color={resultValue === num ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={resultValue === num ? 0.02 : 0.012}
-            outlineColor={resultValue === num ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {formatDiceLabel(num)}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// D10 - Pentagonal trapezohedron
-// ---------------------------------------------------------------------------
-
-export function D10Geometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  // D10 has 20 triangle faces (2 per kite). Group every 2 triangles
-  // into one logical kite for label placement.
   const { geometry, faceCenters, faceNormals } = useMemo(() => {
-    const raw = buildGeometryFromData(getD10Data(), 0.6);
-    // Group pairs of triangle faces into kites
+    const raw = buildGeometryFromData(getData(), scale);
+    if (!groupKites) return raw;
+    // Group pairs of triangle faces into kites (D10/D10X)
     const kiteCenters: THREE.Vector3[] = [];
     const kiteNormals: THREE.Vector3[] = [];
     for (let i = 0; i < raw.faceCenters.length; i += 2) {
@@ -531,7 +330,7 @@ export function D10Geometry({
       kiteNormals.push(raw.faceNormals[i].clone());
     }
     return { geometry: raw.geometry, faceCenters: kiteCenters, faceNormals: kiteNormals };
-  }, []);
+  }, [getData, scale, groupKites]);
 
   useFrame(() => {
     const mesh = meshRef.current;
@@ -542,36 +341,31 @@ export function D10Geometry({
 
   useDicePlayback(meshRef, diceId, playbackRef);
 
-  // Standard D10: kite 0→"1", kite 1→"2", ..., kite 8→"9", kite 9→"0" (=10)
-  // Physics: kite i → value (i+1), so kite 0=1, kite 9=10
-  const labels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-
   return (
     <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
       <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
+      {labels.map((label, i) => {
         const c = faceCenters[i];
         const n = faceNormals[i];
         if (!c || !n) return null;
         const offset = c.clone().add(n.clone().multiplyScalar(0.01));
         const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
         const euler = new THREE.Euler().setFromQuaternion(quat);
-        // Highlight: resultValue matches label (0 on face = value 10)
-        const isHighlighted = resultValue != null && resultValue % 10 === num;
+        const highlighted = isHighlighted(resultValue, label);
         return (
           <Text
             key={i}
             position={[offset.x, offset.y, offset.z]}
             rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.2}
-            color={isHighlighted ? HIGHLIGHT_COLOR : '#ffffff'}
+            fontSize={fontSize}
+            color={highlighted ? HIGHLIGHT_COLOR : '#ffffff'}
             anchorX="center"
             anchorY="middle"
-            outlineWidth={isHighlighted ? 0.018 : 0.01}
-            outlineColor={isHighlighted ? HIGHLIGHT_OUTLINE : '#000000'}
+            outlineWidth={highlighted ? highlightOutlineWidth : outlineWidth}
+            outlineColor={highlighted ? HIGHLIGHT_OUTLINE : '#000000'}
             fontWeight="bold"
           >
-            {formatDiceLabel(num)}
+            {formatLabelFn(label)}
           </Text>
         );
       })}
@@ -580,297 +374,106 @@ export function D10Geometry({
 }
 
 // ---------------------------------------------------------------------------
-// D10X - Percentile die (00, 10, 20, ..., 90) — same shape as D10
+// Dice configurations
 // ---------------------------------------------------------------------------
 
-export function D10XGeometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
+const D4_CONFIG: DiceConfig = {
+  getData: getD4Data,
+  scale: 0.6,
+  labels: [1, 2, 3, 4],
+  fontSize: 0.28,
+  outlineWidth: 0.015,
+  highlightOutlineWidth: 0.025,
+};
 
-  const { geometry, faceCenters, faceNormals } = useMemo(() => {
-    const raw = buildGeometryFromData(getD10Data(), 0.6);
-    const kiteCenters: THREE.Vector3[] = [];
-    const kiteNormals: THREE.Vector3[] = [];
-    for (let i = 0; i < raw.faceCenters.length; i += 2) {
-      const c = new THREE.Vector3()
-        .addVectors(raw.faceCenters[i], raw.faceCenters[i + 1])
-        .multiplyScalar(0.5);
-      kiteCenters.push(c);
-      kiteNormals.push(raw.faceNormals[i].clone());
-    }
-    return { geometry: raw.geometry, faceCenters: kiteCenters, faceNormals: kiteNormals };
-  }, []);
+const D6_CONFIG: DiceConfig = {
+  getData: getD6Data,
+  scale: 0.4,
+  labels: [1, 6, 2, 5, 3, 4],
+  fontSize: 0.38,
+  outlineWidth: 0.018,
+  highlightOutlineWidth: 0.03,
+};
 
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
+const D8_CONFIG: DiceConfig = {
+  getData: getD8Data,
+  scale: 0.6,
+  labels: [1, 2, 3, 4, 5, 6, 7, 8],
+  fontSize: 0.24,
+  outlineWidth: 0.012,
+  highlightOutlineWidth: 0.02,
+};
 
-  useDicePlayback(meshRef, diceId, playbackRef);
+const D10_CONFIG: DiceConfig = {
+  getData: getD10Data,
+  scale: 0.6,
+  labels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 0],
+  fontSize: 0.2,
+  outlineWidth: 0.01,
+  highlightOutlineWidth: 0.018,
+  groupKites: true,
+  isHighlighted: (rv, label) => rv != null && typeof label === 'number' && rv % 10 === label,
+};
 
-  // Labels: kite 0→"10", kite 1→"20", ..., kite 8→"90", kite 9→"00"
-  // Result values from physics: 10, 20, ..., 90, 0
-  const labels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 0];
+const D10X_CONFIG: DiceConfig = {
+  getData: getD10Data,
+  scale: 0.6,
+  labels: [10, 20, 30, 40, 50, 60, 70, 80, 90, 0],
+  fontSize: 0.16,
+  outlineWidth: 0.008,
+  highlightOutlineWidth: 0.015,
+  groupKites: true,
+  formatLabel: (label) => String(label).padStart(2, '0'),
+};
 
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        const isHighlighted = resultValue === num;
-        const label = String(num).padStart(2, '0'); // "00", "10", "20", etc.
-        return (
-          <Text
-            key={i}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.16}
-            color={isHighlighted ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={isHighlighted ? 0.015 : 0.008}
-            outlineColor={isHighlighted ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {label}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
+const D12_CONFIG: DiceConfig = {
+  getData: getD12Data,
+  scale: 0.6,
+  labels: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+  fontSize: 0.18,
+  outlineWidth: 0.008,
+  highlightOutlineWidth: 0.015,
+};
+
+const D20_CONFIG: DiceConfig = {
+  getData: getD20Data,
+  scale: 0.6,
+  labels: Array.from({ length: 20 }, (_, i) => i + 1),
+  fontSize: 0.16,
+  outlineWidth: 0.006,
+  highlightOutlineWidth: 0.012,
+};
+
+// ---------------------------------------------------------------------------
+// Exported dice components — thin wrappers around GenericDiceGeometry
+// ---------------------------------------------------------------------------
+
+export function D4Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D4_CONFIG} />;
 }
 
-/**
- * Builds a proper pentagonal trapezohedron (D10 shape).
- * Non-indexed geometry with guaranteed outward-facing normals.
- * Returns geometry + pre-computed kite face centers + normals.
- */
-function buildD10Geometry(): {
-  geometry: THREE.BufferGeometry;
-  faceCenters: THREE.Vector3[];
-  faceNormals: THREE.Vector3[];
-} {
-  // Pentagonal trapezohedron — 10 kite faces, 12 vertices
-  // Must match physics createPentagonalTrapezohedronGeometry exactly.
-  const SCALE = 0.6;
-  const angleStep = (Math.PI * 2) / 10;
-  const h = 0.105;
-  const apexH = 1.0;
-  const vStretch = 1.2;
-
-  const verts: THREE.Vector3[] = [];
-  for (let i = 0; i < 10; i++) {
-    const angle = i * angleStep;
-    verts.push(new THREE.Vector3(
-      SCALE * Math.cos(angle),
-      SCALE * h * (i % 2 === 0 ? -1 : 1) * vStretch,
-      SCALE * Math.sin(angle),
-    ));
-  }
-  const botApex = new THREE.Vector3(0, -SCALE * apexH * vStretch, 0); // [10]
-  const topApex = new THREE.Vector3(0, SCALE * apexH * vStretch, 0);  // [11]
-  verts.push(botApex, topApex);
-
-  const positions: number[] = [];
-  // 10 kite face centers + normals (one per logical kite, used for labels)
-  const faceCenters: THREE.Vector3[] = [];
-  const faceNormals: THREE.Vector3[] = [];
-
-  function addTriOutward(
-    a: THREE.Vector3,
-    b: THREE.Vector3,
-    c: THREE.Vector3,
-    kiteCenter: THREE.Vector3,
-  ) {
-    const e1 = new THREE.Vector3().subVectors(b, a);
-    const e2 = new THREE.Vector3().subVectors(c, a);
-    const normal = new THREE.Vector3().crossVectors(e1, e2);
-    if (normal.dot(kiteCenter) < 0) {
-      positions.push(a.x, a.y, a.z, c.x, c.y, c.z, b.x, b.y, b.z);
-    } else {
-      positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
-    }
-  }
-
-  // 5 top kites (apex 11, connecting odd/upper ring vertices)
-  for (let i = 0; i < 5; i++) {
-    const upper_a = verts[2 * i + 1];
-    const lower = verts[(2 * i + 2) % 10];
-    const upper_b = verts[(2 * i + 3) % 10];
-    const center = new THREE.Vector3()
-      .add(topApex).add(upper_a).add(lower).add(upper_b)
-      .divideScalar(4);
-
-    addTriOutward(topApex, upper_a, lower, center);
-    addTriOutward(topApex, lower, upper_b, center);
-
-    faceCenters.push(center);
-    const e1 = new THREE.Vector3().subVectors(upper_a, topApex);
-    const e2 = new THREE.Vector3().subVectors(lower, topApex);
-    const n = new THREE.Vector3().crossVectors(e1, e2).normalize();
-    if (n.dot(center) < 0) n.negate();
-    faceNormals.push(n);
-  }
-
-  // 5 bottom kites (apex 10, connecting even/lower ring vertices)
-  for (let i = 0; i < 5; i++) {
-    const lower_a = verts[2 * i];
-    const upper = verts[2 * i + 1];
-    const lower_b = verts[(2 * i + 2) % 10];
-    const center = new THREE.Vector3()
-      .add(botApex).add(lower_a).add(upper).add(lower_b)
-      .divideScalar(4);
-
-    addTriOutward(botApex, lower_b, upper, center);
-    addTriOutward(botApex, upper, lower_a, center);
-
-    faceCenters.push(center);
-    const e1 = new THREE.Vector3().subVectors(lower_b, botApex);
-    const e2 = new THREE.Vector3().subVectors(upper, botApex);
-    const n = new THREE.Vector3().crossVectors(e1, e2).normalize();
-    if (n.dot(center) < 0) n.negate();
-    faceNormals.push(n);
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.computeVertexNormals();
-  return { geometry: geo, faceCenters, faceNormals };
+export function D6Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D6_CONFIG} />;
 }
 
-// ---------------------------------------------------------------------------
-// D12 - Dodecahedron
-// ---------------------------------------------------------------------------
-
-export function D12Geometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
-
-  useDicePlayback(meshRef, diceId, playbackRef);
-
-  const { geometry, faceCenters, faceNormals } = useMemo(
-    () => buildGeometryFromData(getD12Data(), 0.6),
-    [],
-  );
-
-  const labels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        return (
-          <Text
-            key={num}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.18}
-            color={resultValue === num ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={resultValue === num ? 0.015 : 0.008}
-            outlineColor={resultValue === num ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {formatDiceLabel(num)}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
+export function D8Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D8_CONFIG} />;
 }
 
-// ---------------------------------------------------------------------------
-// D20 - Icosahedron
-// ---------------------------------------------------------------------------
+export function D10Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D10_CONFIG} />;
+}
 
-export function D20Geometry({
-  color,
-  position,
-  rotation,
-  diceId,
-  playbackRef,
-  resultValue,
-}: DiceGeometryProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
+export function D10XGeometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D10X_CONFIG} />;
+}
 
-  useFrame(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (playbackRef?.current?.isPlaying) return;
-    mesh.quaternion.set(rotation[0], rotation[1], rotation[2], rotation[3]);
-  });
+export function D12Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D12_CONFIG} />;
+}
 
-  useDicePlayback(meshRef, diceId, playbackRef);
-
-  const { geometry, faceCenters, faceNormals } = useMemo(
-    () => buildGeometryFromData(getD20Data(), 0.6),
-    [],
-  );
-
-  const labels = Array.from({ length: 20 }, (_, i) => i + 1);
-
-  return (
-    <mesh ref={meshRef} position={position} castShadow receiveShadow geometry={geometry}>
-      <meshStandardMaterial {...diceMaterial(color)} />
-      {labels.map((num, i) => {
-        const c = faceCenters[i];
-        const n = faceNormals[i];
-        if (!c || !n) return null;
-        const offset = c.clone().add(n.clone().multiplyScalar(0.01));
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
-        const euler = new THREE.Euler().setFromQuaternion(quat);
-        return (
-          <Text
-            key={num}
-            position={[offset.x, offset.y, offset.z]}
-            rotation={[euler.x, euler.y, euler.z]}
-            fontSize={0.16}
-            color={resultValue === num ? HIGHLIGHT_COLOR : '#ffffff'}
-            anchorX="center"
-            anchorY="middle"
-            outlineWidth={resultValue === num ? 0.012 : 0.006}
-            outlineColor={resultValue === num ? HIGHLIGHT_OUTLINE : '#000000'}
-            fontWeight="bold"
-          >
-            {formatDiceLabel(num)}
-          </Text>
-        );
-      })}
-    </mesh>
-  );
+export function D20Geometry(props: DiceGeometryProps) {
+  return <GenericDiceGeometry {...props} config={D20_CONFIG} />;
 }
 
 // ---------------------------------------------------------------------------
