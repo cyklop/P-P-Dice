@@ -37,6 +37,8 @@
   "room": {
     "createTitle": "Create new room",
     "roomTitle": "Room: {code}",
+    "roomNotFound": "Room {code} does not exist.",
+    "createNewRoom": "Create new room",
     "joinFailed": "Join failed. Check the room code.",
     "connectionError": "Connection error. Please try again.",
     "copyLink": "Copy room link",

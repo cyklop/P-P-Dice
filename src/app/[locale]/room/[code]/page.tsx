@@ -66,6 +66,7 @@ export default function RoomPage({ params }: RoomPageProps) {
   const [hostPanelOpen, setHostPanelOpen] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [roomInfo, setRoomInfo] = useState<{ takenColors: string[]; playerNames: string[] } | null>(null);
+  const [roomNotFound, setRoomNotFound] = useState(false);
 
   // Auto-reconnect: if roomState arrives via reconnect token, skip join dialog
   useEffect(() => {
@@ -89,7 +90,10 @@ export default function RoomPage({ params }: RoomPageProps) {
     const poll = () => {
       fetchRoomInfo(upperCode).then((info) => {
         if (info) {
+          setRoomNotFound(false);
           setRoomInfo({ takenColors: info.takenColors, playerNames: info.playerNames });
+        } else {
+          setRoomNotFound(true);
         }
       }).catch(() => { /* ignore */ });
     };
@@ -204,6 +208,42 @@ export default function RoomPage({ params }: RoomPageProps) {
   // ---------------------------------------------------------------------------
 
   if (!hasJoined) {
+    // Room does not exist — show error with options
+    if (roomNotFound && !isCreating) {
+      return (
+        <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-6">
+          <h1 className="font-heading text-4xl font-bold text-primary-light tracking-wide">
+            {t('roomTitle', { code: upperCode })}
+          </h1>
+
+          <p className="text-red-400 text-sm">
+            {t('roomNotFound', { code: upperCode })}
+          </p>
+
+          <div className="flex gap-4">
+            <Link
+              href="/room/new"
+              className="px-6 py-2 rounded-xl font-heading text-sm tracking-wide
+                         border-2 border-primary text-primary
+                         hover:bg-primary/10
+                         transition-colors duration-200"
+            >
+              {t('createNewRoom')}
+            </Link>
+            <Link
+              href="/"
+              className="px-6 py-2 rounded-xl font-heading text-sm tracking-wide
+                         border-2 border-surface text-text-muted
+                         hover:border-primary hover:text-primary
+                         transition-colors duration-200"
+            >
+              {tc('backToHome')}
+            </Link>
+          </div>
+        </main>
+      );
+    }
+
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-8 gap-6">
         <h1 className="font-heading text-4xl font-bold text-primary-light tracking-wide">

@@ -37,6 +37,8 @@
   "room": {
     "createTitle": "Neuen Raum erstellen",
     "roomTitle": "Raum: {code}",
+    "roomNotFound": "Raum {code} existiert nicht.",
+    "createNewRoom": "Neuen Raum erstellen",
     "joinFailed": "Beitritt fehlgeschlagen. Prüfe den Raum-Code.",
     "connectionError": "Verbindungsfehler. Bitte versuche es erneut.",
     "copyLink": "Raum-Link kopieren",
