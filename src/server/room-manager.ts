@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import type { Room, Player, DiceSet, DiceResult, DiceType, PlayerRestingDice, PhysicsFrame, RollMode, SimultaneousSubMode } from '@/lib/types';
 import {
   MAX_PLAYERS,
@@ -5,6 +6,8 @@ import {
   RECONNECT_TIMEOUT,
   ROOM_CLEANUP_TIMEOUT,
   PLAYER_COLORS,
+  MAX_PLAYER_NAME_LENGTH,
+  MAX_HISTORY_LENGTH,
 } from '@/lib/constants';
 
 // ── Internal types ──────────────────────────────────────────────────────────
@@ -36,24 +39,39 @@ interface DiceStats {
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.randomBytes(ROOM_CODE_LENGTH);
   let code = '';
   for (let i = 0; i < ROOM_CODE_LENGTH; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+    code += chars.charAt(bytes[i] % chars.length);
   }
   return code;
 }
 
 function generateToken(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let token = '';
-  for (let i = 0; i < 32; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
+  return crypto.randomBytes(24).toString('base64url');
 }
 
 function generateId(): string {
-  return generateToken().slice(0, 12);
+  return crypto.randomBytes(9).toString('base64url');
+}
+
+/** Validates and sanitizes a player name. Returns null if invalid. */
+function sanitizeName(name: unknown): string | null {
+  if (typeof name !== 'string') return null;
+  const trimmed = name.trim().slice(0, MAX_PLAYER_NAME_LENGTH);
+  if (trimmed.length === 0) return null;
+  return trimmed;
+}
+
+/** Validates a color against the allowed palette. */
+function isValidColor(color: unknown): color is string {
+  return typeof color === 'string' && (PLAYER_COLORS as readonly string[]).includes(color);
+}
+
+/** Validates a room code format (alphanumeric, correct length). */
+function isValidRoomCode(code: unknown): code is string {
+  if (typeof code !== 'string') return false;
+  return /^[A-Z0-9]{1,10}$/.test(code);
 }
 
 // ── RoomManager class ───────────────────────────────────────────────────────
@@ -72,9 +90,13 @@ export class RoomManager {
     name: string,
     color: string,
     requestedCode?: string,
-  ): { room: Room; reconnectToken: string } {
+  ): { room: Room; reconnectToken: string } | null {
+    const safeName = sanitizeName(name);
+    if (!safeName) return null;
+    if (!isValidColor(color)) return null;
+
     let code: string;
-    if (requestedCode && !this.states.has(requestedCode)) {
+    if (requestedCode && isValidRoomCode(requestedCode) && !this.states.has(requestedCode)) {
       code = requestedCode;
     } else {
       code = generateRoomCode();
@@ -85,7 +107,7 @@ export class RoomManager {
 
     const host: Player = {
       id: hostId,
-      name,
+      name: safeName,
       color,
       isHost: true,
       connected: true,
@@ -136,6 +158,10 @@ export class RoomManager {
     name: string,
     color: string
   ): { success: boolean; error?: string; reconnectToken?: string } {
+    const safeName = sanitizeName(name);
+    if (!safeName) return { success: false, error: 'Invalid name' };
+    if (!isValidColor(color)) return { success: false, error: 'Invalid color' };
+
     const state = this.states.get(code);
     if (!state) return { success: false, error: 'Room not found' };
 
@@ -152,7 +178,7 @@ export class RoomManager {
 
     const player: Player = {
       id: playerId,
-      name,
+      name: safeName,
       color,
       isHost: false,
       connected: true,
@@ -390,6 +416,10 @@ export class RoomManager {
     const state = this.states.get(code);
     if (!state) return;
     state.history.push(result);
+    // Limit history to prevent unbounded memory growth
+    if (state.history.length > MAX_HISTORY_LENGTH) {
+      state.history = state.history.slice(-MAX_HISTORY_LENGTH);
+    }
   }
 
   getDiceHistory(code: string): DiceResult[] {

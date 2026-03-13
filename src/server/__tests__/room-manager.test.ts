@@ -16,7 +16,7 @@ afterEach(() => {
 
 describe('Room creation and joining', () => {
   it('creates a room with a 6-char code and adds the host player', () => {
-    const { room, reconnectToken } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0]);
+    const { room, reconnectToken } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0])!;
     expect(room.code).toMatch(/^[A-Z0-9]{6}$/);
     expect(room.players).toHaveLength(1);
     expect(room.players[0].id).toBe('host1');
@@ -27,7 +27,7 @@ describe('Room creation and joining', () => {
   });
 
   it('allows joining a room, rejects duplicate color, enforces max players and room lock', () => {
-    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0]);
+    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0])!;
     const code = room.code;
 
     // Join succeeds with different color
@@ -50,7 +50,7 @@ describe('Room creation and joining', () => {
 
 describe('Host transfer on disconnect', () => {
   it('transfers host to next player by join order when host disconnects', () => {
-    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0]);
+    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0])!;
     rm.joinRoom(room.code, 'p2', 'Bob', PLAYER_COLORS[1]);
     rm.joinRoom(room.code, 'p3', 'Carol', PLAYER_COLORS[2]);
 
@@ -66,7 +66,7 @@ describe('Host transfer on disconnect', () => {
 
 describe('Dice sets and history', () => {
   it('manages dice sets (create/update/delete) and records dice history with stats', () => {
-    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0]);
+    const { room } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0])!;
     const code = room.code;
 
     // Create dice set
@@ -115,7 +115,7 @@ describe('Dice sets and history', () => {
 
 describe('Reconnect and room cleanup', () => {
   it('reconnects within timeout, cleans up room after all disconnect and timeout expires', () => {
-    const { room, reconnectToken } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0]);
+    const { room, reconnectToken } = rm.createRoom('host1', 'Alice', PLAYER_COLORS[0])!;
     const code = room.code;
 
     // Disconnect

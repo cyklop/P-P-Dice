@@ -29,8 +29,12 @@ export async function initializeServer() {
     httpServer,
     {
       cors: {
-        origin: dev ? '*' : undefined,
+        origin: dev
+          ? '*'
+          : (process.env.ALLOWED_ORIGINS?.split(',') ?? false),
       },
+      // Limit payload size to prevent abuse
+      maxHttpBufferSize: 1e5, // 100KB
     }
   );
 

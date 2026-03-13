@@ -2,6 +2,11 @@ export const MAX_PLAYERS = 8;
 export const ROOM_CODE_LENGTH = 6;
 export const RECONNECT_TIMEOUT = 120_000; // 2 min
 export const ROOM_CLEANUP_TIMEOUT = 300_000; // 5 min
+export const MAX_DICE_PER_THROW = 30;
+export const MAX_SETS_PER_ROOM = 20;
+export const MAX_PLAYER_NAME_LENGTH = 20;
+export const MAX_SET_NAME_LENGTH = 40;
+export const MAX_HISTORY_LENGTH = 500;
 
 export const PLAYER_COLORS = [
   '#E53E3E', // Red

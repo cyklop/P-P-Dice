@@ -6,7 +6,13 @@ import type {
   DiceType,
   PhysicsFrame,
 } from '@/lib/types';
-import { DICE_SIDES } from '@/lib/constants';
+import {
+  DICE_SIDES,
+  MAX_DICE_PER_THROW,
+  MAX_SETS_PER_ROOM,
+  MAX_SET_NAME_LENGTH,
+  PLAYER_COLORS,
+} from '@/lib/constants';
 import { RoomManager, roomManager as defaultRoomManager } from './room-manager';
 import { throwDice, type ExistingDie } from './physics';
 
@@ -18,6 +24,59 @@ type TypedIO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 interface SocketMapping {
   roomCode: string;
   playerId: string;
+}
+
+// ── Rate Limiter ────────────────────────────────────────────────────────────
+
+class RateLimiter {
+  private timestamps = new Map<string, number[]>();
+
+  /** Returns true if the action is allowed, false if rate-limited. */
+  check(key: string, maxRequests: number, windowMs: number): boolean {
+    const now = Date.now();
+    const times = this.timestamps.get(key) ?? [];
+    const filtered = times.filter(t => now - t < windowMs);
+    if (filtered.length >= maxRequests) return false;
+    filtered.push(now);
+    this.timestamps.set(key, filtered);
+    return true;
+  }
+
+  remove(key: string): void {
+    this.timestamps.delete(key);
+  }
+}
+
+const VALID_DICE_TYPES = new Set<string>(Object.keys(DICE_SIDES));
+
+/** Validates a dice set from client input. Returns sanitized set or null. */
+function validateDiceSet(set: unknown): { id: string; name: string; dice: { type: DiceType; count: number }[] } | null {
+  if (!set || typeof set !== 'object') return null;
+  const s = set as Record<string, unknown>;
+
+  const name = typeof s.name === 'string' ? s.name.trim().slice(0, MAX_SET_NAME_LENGTH) : '';
+  if (name.length === 0) return null;
+
+  const id = typeof s.id === 'string' && s.id.length > 0 && s.id.length <= 50
+    ? s.id
+    : `set-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+  if (!Array.isArray(s.dice) || s.dice.length === 0) return null;
+
+  let totalDice = 0;
+  const dice: { type: DiceType; count: number }[] = [];
+  for (const d of s.dice) {
+    if (!d || typeof d !== 'object') return null;
+    const dd = d as Record<string, unknown>;
+    if (typeof dd.type !== 'string' || !VALID_DICE_TYPES.has(dd.type)) return null;
+    const count = typeof dd.count === 'number' ? Math.floor(dd.count) : 0;
+    if (count < 1 || count > MAX_DICE_PER_THROW) return null;
+    totalDice += count;
+    if (totalDice > MAX_DICE_PER_THROW) return null;
+    dice.push({ type: dd.type as DiceType, count });
+  }
+
+  return { id, name, dice };
 }
 
 // ── Dice rolling helper ─────────────────────────────────────────────────────
@@ -143,6 +202,10 @@ function executeSingleThrow(
   set: { dice: { type: DiceType; count: number }[] },
   setId: string,
 ): void {
+  // Enforce max dice limit
+  const totalDice = set.dice.reduce((sum, d) => sum + d.count, 0);
+  if (totalDice > MAX_DICE_PER_THROW || totalDice <= 0) return;
+
   const diceToThrow = expandDiceSet(playerId, setId, set.dice);
 
   // In sequential mode, clear all other players' dice from the tray
@@ -310,6 +373,7 @@ export function createSocketHandler(
 ): void {
   /** Track socketId -> { roomCode, playerId } */
   const socketMap = new Map<string, SocketMapping>();
+  const rateLimiter = new RateLimiter();
 
   io.on('connection', (socket: TypedSocket) => {
     console.log(`Client connected: ${socket.id}`);
@@ -355,8 +419,11 @@ export function createSocketHandler(
     // ── room:create ──────────────────────────────────────────────────────
 
     socket.on('room:create', (data, callback) => {
+      if (!rateLimiter.check(socket.id, 3, 60_000)) return; // max 3 rooms/min
       const { name, color, requestedCode } = data;
-      const { room, reconnectToken } = rm.createRoom(socket.id, name, color, requestedCode);
+      const result = rm.createRoom(socket.id, name, color, requestedCode);
+      if (!result) return; // validation failed
+      const { room, reconnectToken } = result;
       socket.join(room.code);
       socketMap.set(socket.id, {
         roomCode: room.code,
@@ -491,6 +558,7 @@ export function createSocketHandler(
     // ── dice:throw ───────────────────────────────────────────────────────
 
     socket.on('dice:throw', (data) => {
+      if (!rateLimiter.check(socket.id + ':throw', 10, 10_000)) return; // max 10 throws/10s
       const mapping = socketMap.get(socket.id);
       if (!mapping) return;
 
@@ -607,13 +675,17 @@ export function createSocketHandler(
       const room = rm.getRoom(mapping.roomCode);
       if (!room || room.hostId !== socket.id) return;
 
-      // Direct replace — keep client-provided IDs for consistency
-      room.sets = sets.map((s) => ({
-        id: s.id || `set-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        name: s.name,
-        dice: s.dice,
-      }));
+      if (!Array.isArray(sets) || sets.length > MAX_SETS_PER_ROOM) return;
 
+      // Validate and sanitize each set
+      const validatedSets = [];
+      for (const s of sets) {
+        const validated = validateDiceSet(s);
+        if (!validated) return; // reject entire update if any set is invalid
+        validatedSets.push(validated);
+      }
+
+      room.sets = validatedSets;
       io.to(mapping.roomCode).emit('sets:changed', room.sets);
     });
 
@@ -621,6 +693,9 @@ export function createSocketHandler(
 
     socket.on('disconnect', () => {
       console.log(`Client disconnected: ${socket.id}`);
+
+      rateLimiter.remove(socket.id);
+      rateLimiter.remove(socket.id + ':throw');
 
       const mapping = socketMap.get(socket.id);
       if (!mapping) return;
